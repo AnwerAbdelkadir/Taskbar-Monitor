@@ -66,6 +66,7 @@ public partial class App : Application
         Settings = SettingsStore.Load();
         Settings.Normalize();
         Metrics.SetDiskDrive(DiskDriveOf(Settings));
+        Metrics.SetAdapter(Settings.NetAdapter);
 
         // A desktop with no battery cannot show the battery block.
         if (!BatterySampler.IsPresent())
@@ -146,6 +147,7 @@ public partial class App : Application
         CurrentPalette = Palette.Create();
         Metrics.SetInterval(Settings.RefreshMs);
         Metrics.SetDiskDrive(DiskDriveOf(Settings));
+        Metrics.SetAdapter(Settings.NetAdapter);
 
         foreach (var overlay in Overlays) overlay.Reload(rebuildBlocks);
         SettingsWindowInstance?.UpdatePreview(rebuildBlocks);
@@ -157,6 +159,7 @@ public partial class App : Application
         Settings = new AppSettings();
         Settings.Normalize();
         Metrics.SetDiskDrive(DiskDriveOf(Settings));
+        Metrics.SetAdapter(Settings.NetAdapter);
         SettingsStore.Save(Settings);
         RebuildOverlays();
         ApplySettings();

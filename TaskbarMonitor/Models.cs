@@ -60,6 +60,9 @@ public sealed class AppSettings
     public bool StartElevated { get; set; }
     public string NetUnit { get; set; } = "Mbps";         // Mbps | MB/s
 
+    /// <summary>Adapter the Network widget measures; empty = every active adapter.</summary>
+    public string NetAdapter { get; set; } = "";
+
     public double WarnPercent { get; set; } = 80;         // reading turns amber above this
     public double CriticalPercent { get; set; } = 92;     // ...and red above this
     public double WarnTempC { get; set; } = 85;

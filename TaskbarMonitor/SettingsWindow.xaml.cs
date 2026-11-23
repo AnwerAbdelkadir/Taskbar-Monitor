@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -367,6 +368,7 @@ public partial class SettingsWindow : Window
         panel.Children.Add(toggles);
 
         if (block.Kind == MetricKind.Disk) panel.Children.Add(BuildDrivePicker(block));
+        if (block.Kind == MetricKind.Network) panel.Children.Add(BuildAdapterPicker());
 
         return panel;
     }
@@ -431,6 +433,66 @@ public partial class SettingsWindow : Window
         row.Children.Add(combo);
         return row;
     }
+
+    /// <summary>Adapters as "Ethernet · Realtek PCIe GbE · 1 Gbps"; the default measures every active adapter.</summary>
+    private FrameworkElement BuildAdapterPicker()
+    {
+        var entries = new List<AdapterEntry> { new("", "All active adapters") };
+
+        try
+        {
+            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
+
+                var speed = nic.Speed >= 1_000_000_000
+                    ? $"{nic.Speed / 1_000_000_000.0:0.#} Gbps"
+                    : nic.Speed > 0 ? $"{nic.Speed / 1_000_000.0:0} Mbps" : "unplugged";
+
+                var label = $"{nic.Name}  ·  {nic.Description}  ·  {speed}";
+                if (label.Length > 68) label = label[..65].TrimEnd() + "…";
+                entries.Add(new AdapterEntry(nic.Id, label));
+            }
+        }
+        catch { /* adapters can disappear mid-enumeration */ }
+
+        var selected = App.Settings.NetAdapter;
+        if (selected.Length > 0 && entries.All(e => e.Id != selected))
+            entries.Add(new AdapterEntry(selected, selected + "   (not connected)"));
+
+        var combo = new ComboBox
+        {
+            Width = 300,
+            ItemsSource = entries,
+            SelectedItem = entries.FirstOrDefault(e => e.Id == selected) ?? entries[0],
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is not AdapterEntry entry) return;
+            App.Settings.NetAdapter = entry.Id;
+            Apply();
+        };
+
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 10, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        row.Children.Add(new TextBlock
+        {
+            Text = "Adapter",
+            Style = (Style)FindResource("RowDesc"),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 44,
+            Margin = new Thickness(0, 0, 8, 0)
+        });
+        row.Children.Add(combo);
+        return row;
+    }
+
+    private sealed record AdapterEntry(string Id, string Label);
 
     /// <summary>CPU temperature comes from LibreHardwareMonitor, which needs admin.</summary>
     private static bool NeedsAdmin(MetricKind kind) => kind == MetricKind.Cpu;

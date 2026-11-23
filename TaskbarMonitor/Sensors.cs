@@ -74,6 +74,11 @@ internal sealed class NetworkSampler
 {
     private long _rx, _tx;
     private long _timestamp;
+    private string? _adapterId;   // null = every active adapter
+
+    /// <summary>An explicit adapter wins over the "active adapters" heuristics,
+    /// so a VPN or virtual NIC can be watched on purpose.</summary>
+    public void SetAdapter(string? id) => _adapterId = string.IsNullOrWhiteSpace(id) ? null : id;
 
     public (double up, double down) Sample()
     {
@@ -82,17 +87,24 @@ internal sealed class NetworkSampler
         {
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
             {
-                if (nic.OperationalStatus != OperationalStatus.Up) continue;
-                if (nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
-                if (nic.Speed <= 0) continue;
+                if (_adapterId is not null)
+                {
+                    if (nic.Id != _adapterId) continue;
+                }
+                else
+                {
+                    if (nic.OperationalStatus != OperationalStatus.Up) continue;
+                    if (nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
+                    if (nic.Speed <= 0) continue;
 
-                var description = nic.Description;
-                if (description.Contains("Virtual", StringComparison.OrdinalIgnoreCase) ||
-                    description.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase) ||
-                    description.Contains("WAN Miniport", StringComparison.OrdinalIgnoreCase) ||
-                    description.Contains("TAP-Windows", StringComparison.OrdinalIgnoreCase) ||
-                    description.Contains("WireGuard", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                    var description = nic.Description;
+                    if (description.Contains("Virtual", StringComparison.OrdinalIgnoreCase) ||
+                        description.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase) ||
+                        description.Contains("WAN Miniport", StringComparison.OrdinalIgnoreCase) ||
+                        description.Contains("TAP-Windows", StringComparison.OrdinalIgnoreCase) ||
+                        description.Contains("WireGuard", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
 
                 var stats = nic.GetIPStatistics();
                 rx += stats.BytesReceived;

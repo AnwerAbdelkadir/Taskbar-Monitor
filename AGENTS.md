@@ -106,6 +106,10 @@ denied:
   captioned, desktop and shell windows. The overlay then reuses the last seen
   taskbar rect (`_lastBar`/`_lastTrayLeft`), or `HiddenBar()` when it started
   during full-screen.
+- The Network widget measures the adapter in `AppSettings.NetAdapter` (empty = every
+  active adapter, filtered against loopback, tunnels and the usual virtual NIC
+  descriptions). An explicit pick bypasses the filters, so a VPN or virtual NIC can
+  be watched on purpose; the picker lives in the Network widget row.
 - The Disk widget reads a single partition (`BlockSettings.DiskDrive`, empty = the
   Windows drive): space from `DriveInfo`, activity from `\LogicalDisk(X:)\% Disk
   Time` with `PhysicalDisk(_Total)` as the fallback. A missing drive resolves to

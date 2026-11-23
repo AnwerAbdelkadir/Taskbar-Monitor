@@ -17,7 +17,7 @@ Works on Windows 10 and Windows 11 (x64). No installation, no background service
 | CPU temperature, frequency | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
 | RAM used / total | `GlobalMemoryStatusEx` |
 | GPU usage, VRAM, temperature, fan | NVIDIA NVML (driver `nvml.dll`) |
-| Network upload / download | per-adapter byte counters |
+| Network upload / download | byte counters of the chosen adapter, or of every active adapter |
 | Disk activity / space | PDH `LogicalDisk` counter for the chosen drive + `DriveInfo` |
 | Battery | `GetSystemPowerStatus` |
 
@@ -48,8 +48,10 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
   Network, then CPU/GPU, RAM/Disk and Battery. Percentages are always the main
   value. The Disk widget has a **Drive** picker; it defaults to the drive Windows
   is installed on, and both the activity and the used/total space follow that
-  partition. Switching on CPU temperature or frequency on a standard-user run
-  offers to restart the app as administrator.
+  partition. The Network widget has an **Adapter** picker; the default measures
+  every active adapter, and picking a specific one (a VPN, a virtual NIC) makes
+  it follow just that adapter. Switching on CPU temperature or frequency on a
+  standard-user run offers to restart the app as administrator.
 - **Appearance** – theme of the settings window (auto/light/dark), font and size,
   spacing and network unit (Mbps or MB/s). The taskbar readings have no background
   panel; they draw straight onto the taskbar. **Update every** sets how often the

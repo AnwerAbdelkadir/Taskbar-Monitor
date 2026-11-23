@@ -19,6 +19,8 @@ public sealed class MetricsService : IDisposable
     /// <summary>Drive chosen for the Disk widget; empty means the Windows drive.</summary>
     public void SetDiskDrive(string? drive) => _diskDrive = AppSettings.NormalizeDrive(drive);
 
+    public void SetAdapter(string? id) => _network.SetAdapter(id);
+
     public void Start(int intervalMs)
     {
         _gpu.Initialize();
