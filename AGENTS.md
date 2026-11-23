@@ -158,6 +158,10 @@ denied:
   Exception: the preview strip and its clock are set in code from
   `Palette.PreviewBarBackground()`/`palette.Value`, because that mock follows the
   taskbar palette (`Palette.Create`), not the window theme. Do not hard-code it.
+- `History` (in `MetricsService.cs`) is a 120-sample ring buffer every tick appends
+  to. `GraphsWindow.cs` draws it as sparklines on a 1 s timer and is opened by
+  left-clicking the overlay (`App.ShowGraphs`, single instance); its chrome stays
+  dark in both themes, like the settings sidebar. It only draws while open.
 - Settings apply live and auto-save (400 ms debounce via `QueueSave`).
   `Settings.Theme` styles only the settings window: `ApplyChrome()` copies
   `Palette.AppColors(dark)` into those keys (sidebar and dark title bar stay

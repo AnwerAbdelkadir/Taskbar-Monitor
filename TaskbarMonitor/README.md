@@ -35,9 +35,10 @@ TaskbarMonitor.exe             start with the settings window
 TaskbarMonitor.exe --silent    start the overlay only
 ```
 
-Right-click the readings on the taskbar to open settings, pause, toggle Windows
-startup, or exit. Running the exe again while it is running opens the settings
-window (single instance).
+Left-click the readings for a small history window: two minutes of CPU, GPU,
+RAM, network and temperatures as sparklines. Right-click the readings on the
+taskbar to open settings, pause, toggle Windows startup, or exit. Running the
+exe again while it is running opens the settings window (single instance).
 
 Settings and the log live in `%AppData%\TaskbarMonitor`.
 

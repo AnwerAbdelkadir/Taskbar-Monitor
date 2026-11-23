@@ -38,6 +38,9 @@ public sealed class OverlayWindow : Window
         _view.Apply(App.Settings, App.CurrentPalette);
         Content = _view;
         ContextMenu = CreateMenu();
+        // The overlay never activates (WS_EX_NOACTIVATE), so a plain click on the
+        // readings is free real estate for the history window.
+        MouseLeftButtonDown += (_, _) => App.ShowGraphs();
 
         SizeChanged += (_, _) => Position();
         Loaded += (_, _) => Dispatcher.BeginInvoke(new Action(() =>

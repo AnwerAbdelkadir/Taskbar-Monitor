@@ -82,6 +82,8 @@ public sealed class MetricsService : IDisposable
 
             (snapshot.HasBattery, snapshot.BatteryPercent, snapshot.OnAc) = BatterySampler.Sample();
 
+            History.Add(snapshot);
+
             Latest = snapshot;
             Updated?.Invoke(snapshot);
         }
@@ -102,5 +104,43 @@ public sealed class MetricsService : IDisposable
         _gpu.Dispose();
         foreach (var sampler in _disks.Values) sampler.Dispose();
         _disks.Clear();
+    }
+}
+
+public readonly record struct HistorySample(
+    double Cpu, double Gpu, double Ram, double NetUp, double NetDown, double CpuTemp, double GpuTemp);
+
+/// <summary>Rolling window the graphs window draws from; two minutes at 1 s.</summary>
+public static class History
+{
+    public const int Capacity = 120;
+
+    private static readonly object Gate = new();
+    private static readonly HistorySample[] Buffer = new HistorySample[Capacity];
+    private static int _count;
+    private static int _head;
+
+    public static void Add(MetricsSnapshot s)
+    {
+        lock (Gate)
+        {
+            var ram = s.RamTotal > 0 ? s.RamUsed * 100.0 / s.RamTotal : double.NaN;
+            Buffer[_head] = new HistorySample(
+                s.CpuPercent, s.GpuPercent, ram, s.NetUp, s.NetDown, s.CpuTemp, s.GpuTemp);
+            _head = (_head + 1) % Capacity;
+            _count = Math.Min(_count + 1, Capacity);
+        }
+    }
+
+    /// <summary>Oldest first, up to <see cref="Capacity"/> samples.</summary>
+    public static HistorySample[] Samples()
+    {
+        lock (Gate)
+        {
+            var result = new HistorySample[_count];
+            for (var i = 0; i < _count; i++)
+                result[i] = Buffer[(_head - _count + i + Capacity * 2) % Capacity];
+            return result;
+        }
     }
 }

@@ -124,8 +124,7 @@ public partial class App : Application
     public static void ShowSettings()
     {
         if (SettingsWindowInstance is { IsVisible: true })
-        {
-            if (SettingsWindowInstance.WindowState == WindowState.Minimized)
+        {            if (SettingsWindowInstance.WindowState == WindowState.Minimized)
                 SettingsWindowInstance.WindowState = WindowState.Normal;
             SettingsWindowInstance.Activate();
             return;
@@ -139,6 +138,25 @@ public partial class App : Application
         SettingsWindowInstance.Activate();
         SettingsWindowInstance.Topmost = true;
         SettingsWindowInstance.Topmost = false;
+    }
+
+    private static GraphsWindow? _graphs;
+
+    /// <summary>Left-click on the readings opens the two-minute sparklines.</summary>
+    public static void ShowGraphs()
+    {
+        if (_graphs is { IsVisible: true })
+        {
+            _graphs.Activate();
+            return;
+        }
+
+        _graphs = new GraphsWindow();
+        _graphs.Closed += (_, _) => _graphs = null;
+        _graphs.Show();
+        _graphs.Activate();
+        _graphs.Topmost = true;
+        _graphs.Topmost = false;
     }
 
     public static void ApplySettings(bool rebuildBlocks = true)
