@@ -89,7 +89,7 @@ denied:
   edge comes from `TrayNotifyWnd` on Windows 10; Windows 11 leaves that window
   0×0, so the leftmost `SystemTray.*` UI Automation button (chevron, clock) is
   used instead, cached for 5 s per taskbar handle.
-  It caches the taskbar handle and polls every 500 ms; do not add per-tick
+  It caches the taskbar handle and polls every 150 ms; do not add per-tick
   `UpdateLayout()`. `RedrawWindow` on move/resize/close prevents ghost pixels.
   Placement is clamped inside the taskbar and left of the tray, and the tray gap
   applies to manual offsets too.

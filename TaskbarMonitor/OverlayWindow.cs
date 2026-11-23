@@ -45,7 +45,10 @@ public sealed class OverlayWindow : Window
             Opacity = 1;
         }), DispatcherPriority.Loaded);
 
-        _positionTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Background,
+        // 150 ms, not 500: the shell raises the taskbar above us for the length of
+        // its button animations, and every tick this takes the top back. A slower
+        // tick turns that into a visible blink.
+        _positionTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background,
             (_, _) => Position(), Dispatcher);
         _positionTimer.Start();
     }
