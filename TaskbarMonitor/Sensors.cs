@@ -26,6 +26,7 @@ public sealed class MetricsSnapshot
     public double DiskActivity = double.NaN;
     public long DiskUsed;
     public long DiskTotal;
+    public string DiskDrive = "";
 
     public bool HasBattery;
     public int BatteryPercent = -1;
@@ -127,20 +128,99 @@ internal sealed class DiskSampler : IDisposable
     private IntPtr _query;
     private IntPtr _counter;
     private bool _ready;
+    private string _drive;
 
     public DiskSampler()
     {
+        _drive = SystemDrive();
+        Rebuild(_drive);
+    }
+
+    /// <summary>The drive Windows is installed on, for example "C:".</summary>
+    public static string SystemDrive()
+    {
+        try
+        {
+            var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            var root = Path.GetPathRoot(windows);
+            return root is { Length: >= 2 } ? root[..2].ToUpperInvariant() : "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// The configured drive when it is a mounted fixed disk, otherwise the Windows
+    /// drive, otherwise empty (no fixed drive at all).
+    /// </summary>
+    public static string Resolve(string? drive)
+    {
+        var wanted = AppSettings.NormalizeDrive(drive);
+        if (wanted.Length > 0 && IsFixed(wanted)) return wanted;
+
+        var system = SystemDrive();
+        return system.Length > 0 && IsFixed(system) ? system : "";
+    }
+
+    public static bool IsFixed(string drive)
+    {
+        try
+        {
+            var info = new DriveInfo(drive);
+            return info.IsReady && info.DriveType == DriveType.Fixed;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Points the activity counter at the drive; no-op while it is unchanged.</summary>
+    public void SetDrive(string drive)
+    {
+        if (string.Equals(drive, _drive, StringComparison.OrdinalIgnoreCase)) return;
+        _drive = drive;
+        Rebuild(drive);
+    }
+
+    private void Rebuild(string drive)
+    {
+        if (_query != IntPtr.Zero) Native.PdhCloseQuery(_query);
+        _query = IntPtr.Zero;
+        _counter = IntPtr.Zero;
+        _ready = false;
+
         try
         {
             if (Native.PdhOpenQuery(null, IntPtr.Zero, out _query) != 0) return;
-            if (Native.PdhAddEnglishCounter(_query, @"\PhysicalDisk(_Total)\% Disk Time", IntPtr.Zero, out _counter) != 0)
+
+            // LogicalDisk follows the partition; PhysicalDisk is the fallback when
+            // that counter set is disabled.
+            if (drive.Length > 0 &&
+                Native.PdhAddEnglishCounter(_query, $@"\LogicalDisk({drive})\% Disk Time",
+                    IntPtr.Zero, out _counter) == 0)
+            {
+                _ready = true;
+            }
+            else if (Native.PdhAddEnglishCounter(_query, @"\PhysicalDisk(_Total)\% Disk Time",
+                         IntPtr.Zero, out _counter) == 0)
+            {
+                _ready = true;
+            }
+            else
+            {
                 return;
+            }
+
             _ready = Native.PdhCollectQueryData(_query) == 0;
             Native.PdhCollectQueryData(_query); // first sample primes the counter
         }
         catch (Exception ex)
         {
             Log.Error("disk counter", ex);
+            _ready = false;
         }
     }
 
@@ -160,16 +240,27 @@ internal sealed class DiskSampler : IDisposable
         }
     }
 
-    public static (long used, long total) SampleSpace()
+    /// <summary>Used and total bytes of one drive; falls back to every fixed drive.</summary>
+    public static (long used, long total) SampleSpace(string drive)
     {
+        if (drive.Length > 0)
+        {
+            try
+            {
+                var info = new DriveInfo(drive);
+                if (info.IsReady) return (info.TotalSize - info.TotalFreeSpace, info.TotalSize);
+            }
+            catch { /* the drive may be removed */ }
+        }
+
         long used = 0, total = 0;
         try
         {
-            foreach (var drive in DriveInfo.GetDrives())
+            foreach (var driveInfo in DriveInfo.GetDrives())
             {
-                if (!drive.IsReady || drive.DriveType != DriveType.Fixed) continue;
-                used += drive.TotalSize - drive.TotalFreeSpace;
-                total += drive.TotalSize;
+                if (!driveInfo.IsReady || driveInfo.DriveType != DriveType.Fixed) continue;
+                used += driveInfo.TotalSize - driveInfo.TotalFreeSpace;
+                total += driveInfo.TotalSize;
             }
         }
         catch { /* drives can disappear mid-enumeration */ }
@@ -343,7 +434,7 @@ public sealed class CpuTemperatures
 
             Status = hasTemperature
                 ? "CPU temperature available."
-                : "No CPU temperature. Run as administrator (or the sensor driver is blocked).";
+                : "No CPU temperature. Run as administrator with the PawnIO driver installed.";
         }
         catch (Exception ex)
         {

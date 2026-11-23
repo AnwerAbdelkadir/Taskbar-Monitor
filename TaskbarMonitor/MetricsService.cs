@@ -8,12 +8,16 @@ public sealed class MetricsService : IDisposable
     private readonly NvidiaGpu _gpu = new();
     private Timer? _timer;
     private int _busy;
+    private volatile string _diskDrive = "";
 
     public CpuTemperatures CpuTemps { get; } = new();
     public NvidiaGpu Gpu => _gpu;
     public MetricsSnapshot Latest { get; private set; } = new();
     public bool Paused { get; set; }
     public event Action<MetricsSnapshot>? Updated;
+
+    /// <summary>Drive chosen for the Disk widget; empty means the Windows drive.</summary>
+    public void SetDiskDrive(string? drive) => _diskDrive = AppSettings.NormalizeDrive(drive);
 
     public void Start(int intervalMs)
     {
@@ -45,8 +49,11 @@ public sealed class MetricsService : IDisposable
 
             _gpu.Sample(snapshot);
 
+            var drive = DiskSampler.Resolve(_diskDrive);
+            _disk.SetDrive(drive);
+            snapshot.DiskDrive = drive;
             snapshot.DiskActivity = _disk.SampleActivity();
-            (snapshot.DiskUsed, snapshot.DiskTotal) = DiskSampler.SampleSpace();
+            (snapshot.DiskUsed, snapshot.DiskTotal) = DiskSampler.SampleSpace(drive);
 
             (snapshot.HasBattery, snapshot.BatteryPercent, snapshot.OnAc) = BatterySampler.Sample();
 

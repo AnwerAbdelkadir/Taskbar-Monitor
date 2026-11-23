@@ -14,16 +14,19 @@ Works on Windows 10 and Windows 11 (x64). No installation, no background service
 | Reading | Source |
 |---|---|
 | CPU usage | `GetSystemTimes` deltas |
-| CPU temperature / package power | LibreHardwareMonitor (needs administrator) |
+| CPU temperature / package power | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
 | RAM used / total | `GlobalMemoryStatusEx` |
 | GPU usage, VRAM, temperature, power | NVIDIA NVML (driver `nvml.dll`) |
 | Network upload / download | per-adapter byte counters |
-| Disk activity / space | PDH `PhysicalDisk` counters + `DriveInfo` |
+| Disk activity / space | PDH `LogicalDisk` counter for the chosen drive + `DriveInfo` |
 | Battery | `GetSystemPowerStatus` |
 
 GPU values need an NVIDIA card. Without one the GPU blocks show `--`; everything
 else keeps working. CPU temperature additionally needs the app to run as
-administrator; without it the temperature is simply omitted.
+administrator **and the [PawnIO](https://pawnio.eu) driver installed**:
+LibreHardwareMonitor 0.9.6 reads the chipset through PawnIO instead of the
+WinRing0 driver that Microsoft now blocks. Without either, the temperature is
+simply omitted.
 
 ## Run
 
@@ -42,7 +45,9 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
 
 - **Widgets** – enable/disable every reading; show/hide the name, icon,
   temperature, VRAM, used/total amount and power. The layout is fixed: Network,
-  then CPU/GPU, RAM/Disk and Battery. Percentages are always the main value.
+  then CPU/GPU, RAM/Disk and Battery. Percentages are always the main value. The
+  Disk widget has a **Drive** picker; it defaults to the drive Windows is installed
+  on, and both the activity and the used/total space follow that partition.
   Switching on CPU temperature or power on a standard-user run offers to restart
   the app as administrator.
 - **Appearance** – theme of the settings window (auto/light/dark), font and size,
@@ -86,8 +91,10 @@ The published folder is portable: copy it anywhere and run `TaskbarMonitor.exe`.
   foreground window, and the overlay re-asserts topmost each tick.
 - Vertical taskbars get a floating block beside the taskbar instead of a rotated
   layout.
-- CPU temperature depends on the LibreHardwareMonitor kernel driver. If Windows
-  blocks the driver, the reading stays hidden; CPU usage still works.
+- CPU temperature depends on PawnIO: LibreHardwareMonitor loads its signed driver
+  and needs the PawnIO setup installed once (administrator). If PawnIO or the
+  administrator token is missing, the reading stays hidden; CPU usage still works.
+  No driver file is written next to the exe any more.
 - On a desktop with no battery, the battery block is force-disabled and its
   switches are locked.
 - The settings window follows its own theme; the dark title bar and sidebar stay

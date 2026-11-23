@@ -23,6 +23,11 @@ public partial class SettingsWindow : Window
         public override string ToString() => Display;
     }
 
+    private sealed record DriveEntry(string Letter, string Display)
+    {
+        public override string ToString() => Display;
+    }
+
     public SettingsWindow()
     {
         InitializeComponent();
@@ -343,7 +348,70 @@ public partial class SettingsWindow : Window
                 v => SetAdminOption(block, v, x => block.ShowPower = x), NeedsAdmin(block.Kind)));
         panel.Children.Add(toggles);
 
+        if (block.Kind == MetricKind.Disk) panel.Children.Add(BuildDrivePicker(block));
+
         return panel;
+    }
+
+    /// <summary>Fixed drives as "C:  476 GB   (Windows)"; the default is the Windows drive.</summary>
+    private FrameworkElement BuildDrivePicker(BlockSettings block)
+    {
+        var system = DiskSampler.SystemDrive();
+        var entries = new List<DriveEntry>();
+
+        try
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                if (!drive.IsReady || drive.DriveType != DriveType.Fixed) continue;
+
+                var letter = drive.Name.TrimEnd('\\').ToUpperInvariant();
+                var size = drive.TotalSize >= 1L << 30
+                    ? $"{drive.TotalSize / (double)(1L << 30):0.#} GB"
+                    : $"{drive.TotalSize / (double)(1L << 20):0} MB";
+                var windows = string.Equals(letter, system, StringComparison.OrdinalIgnoreCase)
+                    ? "   (Windows)"
+                    : "";
+                entries.Add(new DriveEntry(letter, $"{letter}   {size}{windows}"));
+            }
+        }
+        catch { /* drives can disappear mid-enumeration */ }
+
+        var selected = AppSettings.NormalizeDrive(block.DiskDrive);
+        if (selected.Length == 0) selected = system;
+        if (selected.Length > 0 && entries.All(e => e.Letter != selected))
+            entries.Add(new DriveEntry(selected, $"{selected}   (not connected)"));
+
+        var combo = new ComboBox
+        {
+            Width = 300,
+            ItemsSource = entries,
+            SelectedItem = entries.FirstOrDefault(e => e.Letter == selected) ?? entries.FirstOrDefault(),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is not DriveEntry entry) return;
+            block.DiskDrive = entry.Letter;
+            Apply();
+        };
+
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 10, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        row.Children.Add(new TextBlock
+        {
+            Text = "Drive",
+            Style = (Style)FindResource("RowDesc"),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 44,
+            Margin = new Thickness(0, 0, 8, 0)
+        });
+        row.Children.Add(combo);
+        return row;
     }
 
     /// <summary>CPU temperature/power come from LibreHardwareMonitor, which needs admin.</summary>

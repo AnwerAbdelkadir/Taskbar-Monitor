@@ -1,14 +1,22 @@
 # AGENTS.md
 
 Portable Windows taskbar monitor: one WPF app in `TaskbarMonitor/`; the shipped
-build is `dist/TaskbarMonitor.exe` (self-contained single file, ~141 MB).
+build is the single-file `dist/TaskbarMonitor.exe` (~150 MB, self-contained).
 
-Not a git repo — no commits, no branches. `dist/` is the release output and
-`TaskbarMonitor/.gitignore` (bin/obj/dist) exists for a future repo, so
-publishing is the only way changes reach users.
+Git repo on `main`, remote `origin` = `AnwerAbdelkadir/Taskbar-Monitor`. Verified
+on Windows 11 (26200) and Windows 10 22H2 (19045); multi-monitor and vertical
+taskbars are implemented but untested.
 
-Verified on Windows 11 (26200) and Windows 10 22H2 (19045); multi-monitor and
-vertical taskbars are implemented but untested.
+## Repo gotchas
+
+- The root `.gitignore` ignores only `dist/TaskbarMonitor.exe`, so publishing adds
+  nothing to `git status`. `dist/README.md` **is** tracked and must be refreshed by
+  hand after every publish.
+- `dist/TaskbarMonitor.sys` is tracked in the first commit but deleted on disk.
+  Keep it deleted: `git checkout -- .` or `git stash` would resurrect the
+  Defender-flagged WinRing0 driver this app no longer uses.
+- `11111111111` (23 MB) and `ses_*.json` (9 MB) in the root are committed OpenCode
+  session dumps, not app data. Don't mine them for context and don't add more.
 
 ## Build, run, ship
 
@@ -30,14 +38,21 @@ vertical taskbars are implemented but untested.
 
   Then copy `TaskbarMonitor/README.md` to `dist/README.md`; that copy is manual,
   not part of publish.
-- No tests exist. Verify by building, launching, and watching the real taskbar
-  (`MetricsService` holds the live snapshot). UIA inspection only works on a
-  non-elevated instance — UIPI blocks UI Automation into an elevated one.
-  Practical automation: screenshot the taskbar, read
-  `%AppData%\TaskbarMonitor\settings.json`, drive WPF ComboBoxes with
-  `SetFocus` + `SendKeys` (`{F4}`, type the item, `{ENTER}`), and set the
-  Position boxes with `ValuePattern.SetValue`. Synthetic clicks do not reach
-  native MessageBox buttons; post `WM_COMMAND` with `IDNO` (7) instead.
+- Debug and `dist` copies share `%AppData%\TaskbarMonitor` (settings + log), so
+  switching between them keeps configuration. The running copy locks its own exe,
+  so a build or a publish over it fails.
+
+## Verification (no tests exist)
+
+No test project, no CI. Verify by building, launching, and watching the real
+taskbar (`MetricsService.Latest` holds the live snapshot). UIA inspection only
+works on a non-elevated instance — UIPI blocks UI Automation into an elevated one.
+Practical automation: screenshot the taskbar, read
+`%AppData%\TaskbarMonitor\settings.json`, drive WPF ComboBoxes with
+`SetFocus` + `SendKeys` (`{F4}`, type the item, `{ENTER}`), and set the Position
+boxes with `ValuePattern.SetValue`. Synthetic clicks do not reach native MessageBox
+buttons; post `WM_COMMAND` with `IDNO` (7) instead. Anything touching CPU
+temperature/power has to be checked in an elevated instance.
 
 ## Rebuilding while it runs
 
@@ -60,7 +75,8 @@ denied:
   `Get-Content`/`Set-Content` in Windows PowerShell 5.1 — it reads them as ANSI
   and corrupts `↑ ↓ ° · —` (turned into `â†'`, `Â°`). Use the edit tool, or
   `[IO.File]::ReadAllText/WriteAllText` with an explicit UTF8 encoding.
-- x64 only (`GetWindowLongPtrW`, NVML).
+- x64 only (`GetWindowLongPtrW`, NVML); `app.manifest` is `asInvoker` with
+  PerMonitorV2 DPI, so elevation is opt-in at runtime, never through the manifest.
 
 ## Architecture notes
 
@@ -84,6 +100,12 @@ denied:
   captioned, desktop and shell windows. The overlay then reuses the last seen
   taskbar rect (`_lastBar`/`_lastTrayLeft`), or `HiddenBar()` when it started
   during full-screen, and re-asserts `HWND_TOPMOST` every tick.
+- The Disk widget reads a single partition (`BlockSettings.DiskDrive`, empty = the
+  Windows drive): space from `DriveInfo`, activity from `\LogicalDisk(X:)\% Disk
+  Time` with `PhysicalDisk(_Total)` as the fallback. A missing drive resolves to
+  the Windows drive while the stored letter is kept, so it comes back when the
+  disk does. The label is built from the resolved drive (`DISK C`), not from
+  settings.
 - The overlay panel's fill is `MeterView.HitTestFill` (black at alpha 1), not
   `Transparent`: a layered window with zero alpha is click-through, so
   right-click would stop working between the readings.
@@ -117,6 +139,9 @@ denied:
   `BadgeInk`, `SwitchTrack`, `SliderTrack`, `HoverBg`, `PressedBg`. Any new
   color needs a key in `SettingsWindow.xaml` and an entry in
   `Palette.AppColors()` for both themes, or dark mode shows a stale color.
+  Exception: the preview strip and its clock are set in code from
+  `Palette.PreviewBarBackground()`/`palette.Value`, because that mock follows the
+  taskbar palette (`Palette.Create`), not the window theme. Do not hard-code it.
 - Settings apply live and auto-save (400 ms debounce via `QueueSave`).
   `Settings.Theme` styles only the settings window: `ApplyChrome()` copies
   `Palette.AppColors(dark)` into those keys (sidebar and dark title bar stay
@@ -124,12 +149,22 @@ denied:
   ignores the theme and always follows `SystemUsesLightTheme`;
   `palette.Label/Value/…` only color the text, and there are no custom color
   settings.
-- Sensors: CPU temperature needs administrator (LibreHardwareMonitor driver); GPU
-  needs NVIDIA NVML. Unavailable values are `NaN` and are omitted rather than
-  zeroed. Optimus GPUs error while asleep, so 0 % GPU is a deliberate fallback.
+- Sensors: CPU temperature and package power need administrator **and the PawnIO
+  driver installed** (LibreHardwareMonitor 0.9.6 uses PawnIO; WinRing0 is gone, so
+  no `.sys` is written next to the exe). GPU needs NVIDIA NVML. Unavailable values
+  are `NaN` and are omitted rather than zeroed. Optimus GPUs error while asleep, so
+  0 % GPU is a deliberate fallback.
 - Admin-gated options: turning on CPU Temperature or Power while not elevated
   prompts a restart (`SetAdminOption` → `App.RestartElevated`), which relaunches
   with `--replace` and reopens the settings window. Declining flips the switch
   back off. GPU temperature/power/VRAM come from NVML and are never gated.
 - Startup is the HKCU Run key, or a scheduled task with `/RL HIGHEST` when
   elevated startup is enabled.
+
+## Sensor setup on a fresh machine
+
+Temperatures silently stay hidden (no error, no `.sys`) until PawnIO is present.
+Install the signed setup from <https://github.com/namazso/PawnIO.Setup/releases>
+with `PawnIO_setup.exe -install` elevated (`/S` exits 87 and installs nothing),
+then run the app elevated. If a stray `TaskbarMonitor.sys` reappears, an old build
+or the leftover `R0TaskbarMonitor` driver service is still registered.

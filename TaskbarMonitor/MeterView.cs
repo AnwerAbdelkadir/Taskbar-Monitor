@@ -114,7 +114,7 @@ internal sealed class MetricView : StackPanel, IMetricView
             : double.NaN;
         var alert = AlertBrush(alertPercent, palette);
 
-        _label.Text = _block.ShowLabel ? _block.Kind.DefaultLabel() : "";
+        _label.Text = _block.ShowLabel ? LabelText(snapshot) : "";
         _label.Visibility = _label.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _label.Foreground = palette.Label;
 
@@ -133,6 +133,15 @@ internal sealed class MetricView : StackPanel, IMetricView
     }
 
     private readonly record struct Extra(string Text, bool IsHot, bool IsHotHot = false);
+
+    /// <summary>Disk names the partition it reads, so several drives stay distinguishable.</summary>
+    private string LabelText(MetricsSnapshot snapshot)
+    {
+        if (_block.Kind != MetricKind.Disk) return _block.Kind.DefaultLabel();
+        return snapshot.DiskDrive.Length >= 2
+            ? $"DISK {snapshot.DiskDrive[..1]}"
+            : _block.Kind.DefaultLabel();
+    }
 
     private (string value, List<Extra> extras, double percent) Format(
         MetricsSnapshot s, AppSettings settings)

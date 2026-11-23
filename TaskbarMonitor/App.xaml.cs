@@ -65,6 +65,7 @@ public partial class App : Application
         IsElevated = CheckElevated();
         Settings = SettingsStore.Load();
         Settings.Normalize();
+        Metrics.SetDiskDrive(DiskDriveOf(Settings));
 
         // A desktop with no battery cannot show the battery block.
         if (!BatterySampler.IsPresent())
@@ -144,6 +145,7 @@ public partial class App : Application
         Settings.Normalize();
         CurrentPalette = Palette.Create();
         Metrics.SetInterval(Settings.RefreshMs);
+        Metrics.SetDiskDrive(DiskDriveOf(Settings));
 
         foreach (var overlay in Overlays) overlay.Reload(rebuildBlocks);
         SettingsWindowInstance?.UpdatePreview(rebuildBlocks);
@@ -154,10 +156,15 @@ public partial class App : Application
     {
         Settings = new AppSettings();
         Settings.Normalize();
+        Metrics.SetDiskDrive(DiskDriveOf(Settings));
         SettingsStore.Save(Settings);
         RebuildOverlays();
         ApplySettings();
     }
+
+    /// <summary>Drive the Disk widget follows; empty means the Windows drive.</summary>
+    private static string DiskDriveOf(AppSettings settings) =>
+        settings.Blocks.FirstOrDefault(b => b.Kind == MetricKind.Disk)?.DiskDrive ?? "";
 
     public static void RebuildOverlays()
     {

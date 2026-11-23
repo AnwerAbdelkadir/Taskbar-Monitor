@@ -31,6 +31,10 @@ public sealed class BlockSettings
     public bool ShowAmount { get; set; } = true;
     public bool ShowPower { get; set; }
 
+    /// <summary>Drive shown by the Disk widget ("C:"); null means the Windows drive.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? DiskDrive { get; set; }
+
     public BlockSettings Clone() => (BlockSettings)MemberwiseClone();
 }
 
@@ -85,9 +89,23 @@ public sealed class AppSettings
         return copy;
     }
 
+    /// <summary>"c:" becomes "C:"; anything that is not a drive letter becomes empty.</summary>
+    public static string NormalizeDrive(string? drive)
+    {
+        var text = (drive ?? "").Trim().ToUpperInvariant();
+        if (text.Length != 2 || text[0] < 'A' || text[0] > 'Z' || text[1] != ':') return "";
+        return text;
+    }
+
     public void Normalize()
     {
         Blocks ??= DefaultBlocks();
+
+        foreach (var block in Blocks)
+        {
+            var drive = NormalizeDrive(block.DiskDrive);
+            block.DiskDrive = drive.Length == 0 ? null : drive;
+        }
 
         // Fold the older split widgets into the merged ones. Enabled wins.
         MergeLegacy(MetricKind.Network, MetricKind.NetUp, MetricKind.NetDown);
@@ -173,7 +191,7 @@ public static class MetricKindInfo
         MetricKind.Cpu => "Usage, temperature and package power",
         MetricKind.Gpu or MetricKind.Vram => "Usage, VRAM, temperature and power draw",
         MetricKind.Ram => "Memory in use out of total",
-        MetricKind.Disk or MetricKind.DiskActivity or MetricKind.DiskSpace => "Activity and used space of fixed drives",
+        MetricKind.Disk or MetricKind.DiskActivity or MetricKind.DiskSpace => "Activity and used space of the chosen drive",
         MetricKind.Battery => "Charge level and power source",
         _ => ""
     };
