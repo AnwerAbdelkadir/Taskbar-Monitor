@@ -23,14 +23,20 @@ public sealed class MetricsSnapshot
     public double NetUp;      // bytes / second
     public double NetDown;    // bytes / second
 
-    public double DiskActivity = double.NaN;
-    public long DiskUsed;
-    public long DiskTotal;
-    public string DiskDrive = "";
+    /// <summary>Per-drive readings keyed by the resolved drive ("C:"). One entry
+    /// per Disk widget, so several drives can be watched at once.</summary>
+    public Dictionary<string, DiskReading> Disks = new(StringComparer.OrdinalIgnoreCase);
 
     public bool HasBattery;
     public int BatteryPercent = -1;
     public bool OnAc;
+}
+
+public sealed class DiskReading
+{
+    public double Activity = double.NaN;
+    public long Used;
+    public long Total;
 }
 
 internal sealed class CpuSampler

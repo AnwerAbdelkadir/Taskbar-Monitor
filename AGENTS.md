@@ -47,6 +47,8 @@ taskbars are implemented but untested.
 No test project, no CI. Verify by building, launching, and watching the real
 taskbar (`MetricsService.Latest` holds the live snapshot). UIA inspection only
 works on a non-elevated instance — UIPI blocks UI Automation into an elevated one.
+Edit `%AppData%\TaskbarMonitor\settings.json` **only while the app is closed**:
+`App.ExitApp` saves the in-memory settings over the file, wiping external edits.
 Practical automation: screenshot the taskbar, read
 `%AppData%\TaskbarMonitor\settings.json`, drive WPF ComboBoxes with
 `SetFocus` + `SendKeys` (`{F4}`, type the item, `{ENTER}`), and set the Position
@@ -110,12 +112,13 @@ denied:
   active adapter, filtered against loopback, tunnels and the usual virtual NIC
   descriptions). An explicit pick bypasses the filters, so a VPN or virtual NIC can
   be watched on purpose; the picker lives in the Network widget row.
-- The Disk widget reads a single partition (`BlockSettings.DiskDrive`, empty = the
-  Windows drive): space from `DriveInfo`, activity from `\LogicalDisk(X:)\% Disk
-  Time` with `PhysicalDisk(_Total)` as the fallback. A missing drive resolves to
-  the Windows drive while the stored letter is kept, so it comes back when the
-  disk does. The label is built from the resolved drive (`DISK C`), not from
-  settings.
+- The Disk widget exists once per drive: several `BlockSettings` with
+  `Kind == Disk` are allowed (Normalize dedupes by drive, null being the Windows
+  drive). The metrics snapshot carries `Disks` (resolved drive → activity/space),
+  `MetricsService` keeps one `DiskSampler` per drive, and `MeterView.PlanColumns`
+  expands the Disk kind into one item per block — pairs stay stable, extra disks
+  pair with each other before Battery. "Add drive"/"Remove" live in each Disk row;
+  the first Disk block cannot be removed.
 - The overlay panel's fill is `MeterView.HitTestFill` (black at alpha 1), not
   `Transparent`: a layered window with zero alpha is click-through, so
   right-click would stop working between the readings.

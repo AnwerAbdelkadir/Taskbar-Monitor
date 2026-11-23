@@ -46,12 +46,14 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
 - **Widgets** – enable/disable every reading; show/hide the name, icon,
   temperature, frequency, VRAM, fan and used/total amount. The layout is fixed:
   Network, then CPU/GPU, RAM/Disk and Battery. Percentages are always the main
-  value. The Disk widget has a **Drive** picker; it defaults to the drive Windows
-  is installed on, and both the activity and the used/total space follow that
-  partition. The Network widget has an **Adapter** picker; the default measures
-  every active adapter, and picking a specific one (a VPN, a virtual NIC) makes
-  it follow just that adapter. Switching on CPU temperature or frequency on a
-  standard-user run offers to restart the app as administrator.
+  value. Each Disk widget has a **Drive** picker; it defaults to the drive
+  Windows is installed on, and both the activity and the used/total space follow
+  that partition. **Add drive** adds another Disk widget (so `DISK C`, `DISK D`,
+  … can sit side by side), and extra disks can be removed. The Network widget has
+  an **Adapter** picker; the default measures every active adapter, and picking a
+  specific one (a VPN, a virtual NIC) makes it follow just that adapter. Switching
+  on CPU temperature or frequency on a standard-user run offers to restart the
+  app as administrator.
 - **Appearance** – theme of the settings window (auto/light/dark), font and size,
   spacing and network unit (Mbps or MB/s). The taskbar readings have no background
   panel; they draw straight onto the taskbar. **Update every** sets how often the

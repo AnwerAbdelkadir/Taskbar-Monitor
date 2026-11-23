@@ -65,7 +65,7 @@ public partial class App : Application
         IsElevated = CheckElevated();
         Settings = SettingsStore.Load();
         Settings.Normalize();
-        Metrics.SetDiskDrive(DiskDriveOf(Settings));
+        Metrics.SetDiskDrives(DiskDrivesOf(Settings));
         Metrics.SetAdapter(Settings.NetAdapter);
 
         // A desktop with no battery cannot show the battery block.
@@ -146,7 +146,7 @@ public partial class App : Application
         Settings.Normalize();
         CurrentPalette = Palette.Create();
         Metrics.SetInterval(Settings.RefreshMs);
-        Metrics.SetDiskDrive(DiskDriveOf(Settings));
+        Metrics.SetDiskDrives(DiskDrivesOf(Settings));
         Metrics.SetAdapter(Settings.NetAdapter);
 
         foreach (var overlay in Overlays) overlay.Reload(rebuildBlocks);
@@ -158,16 +158,16 @@ public partial class App : Application
     {
         Settings = new AppSettings();
         Settings.Normalize();
-        Metrics.SetDiskDrive(DiskDriveOf(Settings));
+        Metrics.SetDiskDrives(DiskDrivesOf(Settings));
         Metrics.SetAdapter(Settings.NetAdapter);
         SettingsStore.Save(Settings);
         RebuildOverlays();
         ApplySettings();
     }
 
-    /// <summary>Drive the Disk widget follows; empty means the Windows drive.</summary>
-    private static string DiskDriveOf(AppSettings settings) =>
-        settings.Blocks.FirstOrDefault(b => b.Kind == MetricKind.Disk)?.DiskDrive ?? "";
+    /// <summary>Drives the Disk widgets follow; a null entry means the Windows drive.</summary>
+    private static IEnumerable<string?> DiskDrivesOf(AppSettings settings) =>
+        settings.Blocks.Where(b => b.Kind == MetricKind.Disk).Select(b => b.DiskDrive);
 
     public static void RebuildOverlays()
     {

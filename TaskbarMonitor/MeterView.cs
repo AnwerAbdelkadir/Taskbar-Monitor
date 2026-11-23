@@ -138,8 +138,9 @@ internal sealed class MetricView : StackPanel, IMetricView
     private string LabelText(MetricsSnapshot snapshot)
     {
         if (_block.Kind != MetricKind.Disk) return _block.Kind.DefaultLabel();
-        return snapshot.DiskDrive.Length >= 2
-            ? $"DISK {snapshot.DiskDrive[..1]}"
+        var drive = DiskSampler.Resolve(_block.DiskDrive);
+        return drive.Length >= 2
+            ? $"DISK {drive[..1]}"
             : _block.Kind.DefaultLabel();
     }
 
@@ -199,10 +200,18 @@ internal sealed class MetricView : StackPanel, IMetricView
                 break;
 
             case MetricKind.Disk:
-                percent = s.DiskActivity;
-                value = double.IsNaN(s.DiskActivity) ? "--" : $"{s.DiskActivity:0}%";
-                if (_block.ShowAmount && s.DiskTotal > 0)
-                    extras.Add(new Extra($"{Gib(s.DiskUsed):0.0}/{Gib(s.DiskTotal):0.0}G", false));
+                var drive = DiskSampler.Resolve(_block.DiskDrive);
+                if (s.Disks.TryGetValue(drive, out var disk))
+                {
+                    percent = disk.Activity;
+                    value = double.IsNaN(disk.Activity) ? "--" : $"{disk.Activity:0}%";
+                    if (_block.ShowAmount && disk.Total > 0)
+                        extras.Add(new Extra($"{Gib(disk.Used):0.0}/{Gib(disk.Total):0.0}G", false));
+                }
+                else
+                {
+                    value = "--";
+                }
                 break;
 
             case MetricKind.Battery:
@@ -365,19 +374,15 @@ public sealed class MeterView : UserControl
             var column = rendered[i];
             var last = i == rendered.Count - 1;
 
-            if (column.Tall == MetricKind.Network)
+            if (column.Tall is { } tallBlock && tallBlock.Kind == MetricKind.Network)
             {
-                var block = FindBlock(MetricKind.Network);
-                if (block is { Enabled: true })
-                {
-                    var view = new NetworkView(block, _settings, _palette);
-                    if (last) view.Margin = new Thickness(0);
-                    Grid.SetRow(view, 0);
-                    Grid.SetRowSpan(view, 2);
-                    Grid.SetColumn(view, i);
-                    _grid.Children.Add(view);
-                    _views.Add(view);
-                }
+                var view = new NetworkView(tallBlock, _settings, _palette);
+                if (last) view.Margin = new Thickness(0);
+                Grid.SetRow(view, 0);
+                Grid.SetRowSpan(view, 2);
+                Grid.SetColumn(view, i);
+                _grid.Children.Add(view);
+                _views.Add(view);
             }
 
             AddCell(column.Top, 0, i, last);
@@ -387,11 +392,8 @@ public sealed class MeterView : UserControl
         if (_views.Count > 0) UpdateValues(App.Latest);
     }
 
-    private void AddCell(MetricKind? kind, int row, int column, bool last)
+    private void AddCell(BlockSettings? block, int row, int column, bool last)
     {
-        if (kind is not MetricKind metric) return;
-
-        var block = FindBlock(metric);
         if (block is not { Enabled: true }) return;
 
         var view = new MetricView(block, _settings, _palette);
@@ -404,12 +406,27 @@ public sealed class MeterView : UserControl
 
     /// <summary>
     /// Network is a two-line column; every other reading pairs vertically in
-    /// Order sequence. A disabled reading keeps its slot, so nothing jumps.
+    /// order. The Disk kind expands into one item per Disk block, so several
+    /// drives can be watched at once. A disabled reading keeps its slot, so
+    /// nothing jumps.
     /// </summary>
     private List<ColumnPlan> PlanColumns()
     {
         var columns = new List<ColumnPlan>();
         ColumnPlan? pair = null;
+
+        void AddItem(BlockSettings? item)
+        {
+            if (item is not { Enabled: true }) return;
+            pair ??= new ColumnPlan();
+            if (pair.Top is null) pair.Top = item;
+            else
+            {
+                pair.Bottom = item;
+                columns.Add(pair);
+                pair = null;
+            }
+        }
 
         foreach (var kind in AppSettings.LayoutOrder())
         {
@@ -423,18 +440,15 @@ public sealed class MeterView : UserControl
                     pair = null;
                 }
 
-                columns.Add(new ColumnPlan { Tall = kind });
+                columns.Add(new ColumnPlan { Tall = block });
                 continue;
             }
 
-            pair ??= new ColumnPlan();
-            if (pair.Top is null) pair.Top = kind;
+            if (kind == MetricKind.Disk)
+                foreach (var disk in _settings.Blocks.Where(b => b.Kind == MetricKind.Disk))
+                    AddItem(disk);
             else
-            {
-                pair.Bottom = kind;
-                columns.Add(pair);
-                pair = null;
-            }
+                AddItem(FindBlock(kind));
         }
 
         if (pair is not null) columns.Add(pair);
@@ -442,19 +456,16 @@ public sealed class MeterView : UserControl
     }
 
     private bool HasVisibleView(ColumnPlan column) =>
-        IsVisible(column.Tall) || IsVisible(column.Top) || IsVisible(column.Bottom);
-
-    private bool IsVisible(MetricKind? kind) =>
-        kind is MetricKind metric && FindBlock(metric) is { Enabled: true };
+        column.Tall is { Enabled: true } || column.Top is { Enabled: true } || column.Bottom is { Enabled: true };
 
     private BlockSettings? FindBlock(MetricKind kind) =>
         _settings.Blocks.FirstOrDefault(b => b.Kind == kind);
 
     private sealed class ColumnPlan
     {
-        public MetricKind? Tall;
-        public MetricKind? Top;
-        public MetricKind? Bottom;
+        public BlockSettings? Tall;
+        public BlockSettings? Top;
+        public BlockSettings? Bottom;
     }
 
     public void UpdateValues(MetricsSnapshot snapshot)

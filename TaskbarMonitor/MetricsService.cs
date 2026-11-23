@@ -4,11 +4,11 @@ public sealed class MetricsService : IDisposable
 {
     private readonly CpuSampler _cpu = new();
     private readonly NetworkSampler _network = new();
-    private readonly DiskSampler _disk = new();
+    private readonly Dictionary<string, DiskSampler> _disks = new(StringComparer.OrdinalIgnoreCase);
     private readonly NvidiaGpu _gpu = new();
     private Timer? _timer;
     private int _busy;
-    private volatile string _diskDrive = "";
+    private readonly List<string> _diskDrives = new();
 
     public CpuTemperatures CpuTemps { get; } = new();
     public NvidiaGpu Gpu => _gpu;
@@ -16,8 +16,23 @@ public sealed class MetricsService : IDisposable
     public bool Paused { get; set; }
     public event Action<MetricsSnapshot>? Updated;
 
-    /// <summary>Drive chosen for the Disk widget; empty means the Windows drive.</summary>
-    public void SetDiskDrive(string? drive) => _diskDrive = AppSettings.NormalizeDrive(drive);
+    /// <summary>Drives the Disk widgets follow; a null entry means the Windows drive.</summary>
+    public void SetDiskDrives(IEnumerable<string?>? drives)
+    {
+        _diskDrives.Clear();
+        foreach (var drive in drives ?? Enumerable.Empty<string?>())
+        {
+            var resolved = DiskSampler.Resolve(drive);
+            if (resolved.Length > 0 && !_diskDrives.Contains(resolved))
+                _diskDrives.Add(resolved);
+        }
+
+        foreach (var stale in _disks.Where(kv => !_diskDrives.Contains(kv.Key)).ToList())
+        {
+            stale.Value.Dispose();
+            _disks.Remove(stale.Key);
+        }
+    }
 
     public void SetAdapter(string? id) => _network.SetAdapter(id);
 
@@ -51,11 +66,19 @@ public sealed class MetricsService : IDisposable
 
             _gpu.Sample(snapshot);
 
-            var drive = DiskSampler.Resolve(_diskDrive);
-            _disk.SetDrive(drive);
-            snapshot.DiskDrive = drive;
-            snapshot.DiskActivity = _disk.SampleActivity();
-            (snapshot.DiskUsed, snapshot.DiskTotal) = DiskSampler.SampleSpace(drive);
+            foreach (var drive in _diskDrives)
+            {
+                if (!_disks.TryGetValue(drive, out var sampler))
+                {
+                    sampler = new DiskSampler();
+                    _disks[drive] = sampler;
+                }
+
+                sampler.SetDrive(drive);
+                var reading = new DiskReading { Activity = sampler.SampleActivity() };
+                (reading.Used, reading.Total) = DiskSampler.SampleSpace(drive);
+                snapshot.Disks[drive] = reading;
+            }
 
             (snapshot.HasBattery, snapshot.BatteryPercent, snapshot.OnAc) = BatterySampler.Sample();
 
@@ -77,6 +100,7 @@ public sealed class MetricsService : IDisposable
         _timer?.Dispose();
         _timer = null;
         _gpu.Dispose();
-        _disk.Dispose();
+        foreach (var sampler in _disks.Values) sampler.Dispose();
+        _disks.Clear();
     }
 }
