@@ -157,26 +157,18 @@ internal sealed class MetricView : StackPanel, IMetricView
             extras.Add(new Extra($"{celsius:0}°C", celsius >= 85, celsius >= 95));
         }
 
-        void AddPower(double watts)
-        {
-            if (!_block.ShowPower || double.IsNaN(watts)) return;
-            extras.Add(new Extra($"{watts:0}W", false));
-        }
-
         switch (_block.Kind)
         {
             case MetricKind.Cpu:
                 percent = s.CpuPercent;
                 value = $"{s.CpuPercent:0}%";
                 AddTemperature(s.CpuTemp);
-                AddPower(s.CpuPowerW);
                 break;
 
             case MetricKind.Gpu:
                 percent = s.GpuPercent;
                 value = double.IsNaN(s.GpuPercent) ? "--" : $"{s.GpuPercent:0}%";
                 AddTemperature(s.GpuTemp);
-                AddPower(s.GpuPowerW);
                 if (_block.ShowVram && s.VramTotal > 0)
                     extras.Add(new Extra($"VRAM {Gib(s.VramUsed):0.0}/{Gib(s.VramTotal):0.0}G", false));
                 break;

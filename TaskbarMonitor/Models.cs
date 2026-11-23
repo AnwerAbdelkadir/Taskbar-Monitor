@@ -29,7 +29,6 @@ public sealed class BlockSettings
     public bool ShowTemperature { get; set; } = true;
     public bool ShowVram { get; set; } = true;
     public bool ShowAmount { get; set; } = true;
-    public bool ShowPower { get; set; }
 
     /// <summary>Drive shown by the Disk widget ("C:"); null means the Windows drive.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -157,7 +156,7 @@ public static class MetricKindInfo
     {
         MetricKind.Network or MetricKind.NetUp or MetricKind.NetDown => "Network speed (upload & download)",
         MetricKind.Cpu => "CPU usage & temperature",
-        MetricKind.Gpu or MetricKind.Vram => "GPU usage, VRAM, temperature & power",
+        MetricKind.Gpu or MetricKind.Vram => "GPU usage, VRAM & temperature",
         MetricKind.Ram => "RAM used / total",
         MetricKind.Disk or MetricKind.DiskActivity or MetricKind.DiskSpace => "Disk activity & space",
         MetricKind.Battery => "Battery level",
@@ -188,8 +187,8 @@ public static class MetricKindInfo
     public static string Description(this MetricKind k) => k switch
     {
         MetricKind.Network or MetricKind.NetUp or MetricKind.NetDown => "Upload and download of active adapters",
-        MetricKind.Cpu => "Usage, temperature and package power",
-        MetricKind.Gpu or MetricKind.Vram => "Usage, VRAM, temperature and power draw",
+        MetricKind.Cpu => "Usage and temperature",
+        MetricKind.Gpu or MetricKind.Vram => "Usage, VRAM and temperature",
         MetricKind.Ram => "Memory in use out of total",
         MetricKind.Disk or MetricKind.DiskActivity or MetricKind.DiskSpace => "Activity and used space of the chosen drive",
         MetricKind.Battery => "Charge level and power source",
@@ -199,8 +198,6 @@ public static class MetricKindInfo
     public static bool SupportsAmount(this MetricKind k) => k is MetricKind.Ram or MetricKind.Disk;
 
     public static bool SupportsTemperature(this MetricKind k) => k is MetricKind.Cpu or MetricKind.Gpu;
-
-    public static bool SupportsPower(this MetricKind k) => k is MetricKind.Cpu or MetricKind.Gpu;
 }
 
 public static class SettingsStore

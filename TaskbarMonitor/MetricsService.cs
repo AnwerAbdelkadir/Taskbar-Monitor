@@ -40,8 +40,7 @@ public sealed class MetricsService : IDisposable
             var snapshot = new MetricsSnapshot
             {
                 CpuPercent = _cpu.Sample(),
-                CpuTemp = CpuTemps.SampleTemperature(),
-                CpuPowerW = CpuTemps.SamplePower()
+                CpuTemp = CpuTemps.SampleTemperature()
             };
 
             (snapshot.RamUsed, snapshot.RamTotal) = MemorySampler.Sample();

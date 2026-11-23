@@ -343,9 +343,6 @@ public partial class SettingsWindow : Window
                 v => SetAdminOption(block, v, x => block.ShowTemperature = x), NeedsAdmin(block.Kind)));
         if (block.Kind == MetricKind.Gpu)
             toggles.Children.Add(OptionChip("VRAM", block.ShowVram, v => { block.ShowVram = v; Apply(); }));
-        if (block.Kind.SupportsPower())
-            toggles.Children.Add(OptionChip("Power (W)", block.ShowPower,
-                v => SetAdminOption(block, v, x => block.ShowPower = x), NeedsAdmin(block.Kind)));
         panel.Children.Add(toggles);
 
         if (block.Kind == MetricKind.Disk) panel.Children.Add(BuildDrivePicker(block));
@@ -414,7 +411,7 @@ public partial class SettingsWindow : Window
         return row;
     }
 
-    /// <summary>CPU temperature/power come from LibreHardwareMonitor, which needs admin.</summary>
+    /// <summary>CPU temperature comes from LibreHardwareMonitor, which needs admin.</summary>
     private static bool NeedsAdmin(MetricKind kind) => kind == MetricKind.Cpu;
 
     private void SetAdminOption(BlockSettings block, bool on, Action<bool> assign)
@@ -425,7 +422,7 @@ public partial class SettingsWindow : Window
         if (!on || App.IsElevated || !NeedsAdmin(block.Kind)) return;
 
         var answer = MessageBox.Show(this,
-            "CPU temperature and power need administrator access.\n\nRestart Taskbar Monitor as administrator now?",
+            "CPU temperature needs administrator access.\n\nRestart Taskbar Monitor as administrator now?",
             "Taskbar Monitor", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
         if (answer == MessageBoxResult.Yes)

@@ -149,17 +149,23 @@ denied:
   ignores the theme and always follows `SystemUsesLightTheme`;
   `palette.Label/Value/…` only color the text, and there are no custom color
   settings.
-- Sensors: CPU temperature and package power need administrator **and the PawnIO
+- Sensors: CPU temperature needs administrator **and the PawnIO
   driver installed** (LibreHardwareMonitor 0.9.6 uses PawnIO; WinRing0 is gone, so
   no `.sys` is written next to the exe). GPU needs NVIDIA NVML. Unavailable values
   are `NaN` and are omitted rather than zeroed. Optimus GPUs error while asleep, so
-  0 % GPU is a deliberate fallback.
-- Admin-gated options: turning on CPU Temperature or Power while not elevated
+  0 % GPU is a deliberate fallback. There is no power (W) reading: `ShowPower` and
+  the CPU/NVML power samples were removed.
+- Admin-gated options: turning on CPU Temperature while not elevated
   prompts a restart (`SetAdminOption` → `App.RestartElevated`), which relaunches
   with `--replace` and reopens the settings window. Declining flips the switch
-  back off. GPU temperature/power/VRAM come from NVML and are never gated.
+  back off. GPU temperature/VRAM come from NVML and are never gated.
 - Startup is the HKCU Run key, or a scheduled task with `/RL HIGHEST` when
-  elevated startup is enabled.
+  elevated startup is enabled. The shipped setup uses the task (`StartWithWindows`
+  + `StartElevated`) so CPU temperature works from every logon with no UAC prompt.
+  Toggling either Startup box calls `Startup.Apply`, which **imports** an XML
+  definition instead of `schtasks /Create`: the command line version sets "do not
+  start on batteries" and a 72-hour run limit, which would block laptops and kill
+  the overlay after three days.
 
 ## Sensor setup on a fresh machine
 

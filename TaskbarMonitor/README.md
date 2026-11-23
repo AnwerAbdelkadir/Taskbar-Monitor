@@ -14,9 +14,9 @@ Works on Windows 10 and Windows 11 (x64). No installation, no background service
 | Reading | Source |
 |---|---|
 | CPU usage | `GetSystemTimes` deltas |
-| CPU temperature / package power | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
+| CPU temperature | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
 | RAM used / total | `GlobalMemoryStatusEx` |
-| GPU usage, VRAM, temperature, power | NVIDIA NVML (driver `nvml.dll`) |
+| GPU usage, VRAM, temperature | NVIDIA NVML (driver `nvml.dll`) |
 | Network upload / download | per-adapter byte counters |
 | Disk activity / space | PDH `LogicalDisk` counter for the chosen drive + `DriveInfo` |
 | Battery | `GetSystemPowerStatus` |
@@ -44,11 +44,11 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
 ## Settings
 
 - **Widgets** – enable/disable every reading; show/hide the name, icon,
-  temperature, VRAM, used/total amount and power. The layout is fixed: Network,
+  temperature, VRAM and used/total amount. The layout is fixed: Network,
   then CPU/GPU, RAM/Disk and Battery. Percentages are always the main value. The
   Disk widget has a **Drive** picker; it defaults to the drive Windows is installed
   on, and both the activity and the used/total space follow that partition.
-  Switching on CPU temperature or power on a standard-user run offers to restart
+  Switching on CPU temperature on a standard-user run offers to restart
   the app as administrator.
 - **Appearance** – theme of the settings window (auto/light/dark), font and size,
   spacing and network unit (Mbps or MB/s). The taskbar readings have no background

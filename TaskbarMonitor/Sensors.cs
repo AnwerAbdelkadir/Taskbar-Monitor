@@ -9,14 +9,12 @@ public sealed class MetricsSnapshot
 {
     public double CpuPercent;
     public double CpuTemp = double.NaN;
-    public double CpuPowerW = double.NaN;
 
     public long RamUsed;
     public long RamTotal;
 
     public double GpuPercent = double.NaN;
     public double GpuTemp = double.NaN;
-    public double GpuPowerW = double.NaN;
     public long VramUsed;
     public long VramTotal;
 
@@ -295,7 +293,6 @@ public sealed class NvidiaGpu : IDisposable
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int MemoryFn(IntPtr device, out NvmlMemory memory);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int UtilFn(IntPtr device, out NvmlUtilization utilization);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int TempFn(IntPtr device, int sensor, out uint temperature);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int PowerFn(IntPtr device, out uint milliwatts);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NvmlMemory { public ulong Total, Free, Used; }
@@ -310,7 +307,6 @@ public sealed class NvidiaGpu : IDisposable
     private MemoryFn? _memory;
     private UtilFn? _utilization;
     private TempFn? _temperature;
-    private PowerFn? _power;
 
     public bool Available { get; private set; }
 
@@ -330,7 +326,6 @@ public sealed class NvidiaGpu : IDisposable
             _memory = Bind<MemoryFn>("nvmlDeviceGetMemoryInfo");
             _utilization = Bind<UtilFn>("nvmlDeviceGetUtilizationRates");
             _temperature = Bind<TempFn>("nvmlDeviceGetTemperature");
-            _power = Bind<PowerFn>("nvmlDeviceGetPowerUsage");
 
             if (count is null || handle is null || _memory is null) return;
             if (_init() != 0) return;
@@ -372,9 +367,6 @@ public sealed class NvidiaGpu : IDisposable
             if (_temperature is not null && _temperature(_device, 0, out var temperature) == 0 &&
                 temperature is > 0 and < 125)
                 snapshot.GpuTemp = temperature;
-
-            if (_power is not null && _power(_device, out var milliwatts) == 0 && milliwatts > 0)
-                snapshot.GpuPowerW = milliwatts / 1000.0;
         }
         catch (Exception ex)
         {
@@ -463,31 +455,6 @@ public sealed class CpuTemperatures
                     var name = sensor.Name;
                     if (name.Contains("Package", StringComparison.OrdinalIgnoreCase) ||
                         name.Contains("Tctl", StringComparison.OrdinalIgnoreCase))
-                        return sensor.Value.Value;
-                    best = double.IsNaN(best) ? sensor.Value.Value : Math.Max(best, sensor.Value.Value);
-                }
-                return best;
-            }
-            catch
-            {
-                return double.NaN;
-            }
-        }
-    }
-
-    public double SamplePower()
-    {
-        lock (_gate)
-        {
-            if (_computer is null || _cpu is null) return double.NaN;
-            try
-            {
-                _cpu.Update();
-                double best = double.NaN;
-                foreach (var sensor in _cpu.Sensors)
-                {
-                    if (sensor.SensorType != SensorType.Power || !sensor.Value.HasValue) continue;
-                    if (sensor.Name.Contains("Package", StringComparison.OrdinalIgnoreCase))
                         return sensor.Value.Value;
                     best = double.IsNaN(best) ? sensor.Value.Value : Math.Max(best, sensor.Value.Value);
                 }

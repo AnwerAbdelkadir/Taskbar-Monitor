@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using System.Security;
+using System.Security.Principal;
 using System.Text;
 using System.Windows.Automation;
 using Microsoft.Win32;
@@ -375,14 +377,82 @@ public static class Startup
         if (elevated)
         {
             // /RL HIGHEST + ONLOGON = no UAC prompt on every login (created once, as admin)
-            Run("schtasks.exe",
-                $"/Create /TN \"{TaskName}\" /TR \"\\\"{ExePath}\\\" --silent\" /SC ONLOGON /RL HIGHEST /F");
+            ImportTask();
         }
         else
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true) ??
                             Registry.CurrentUser.CreateSubKey(RunKey);
             key?.SetValue(RunValue, $"\"{ExePath}\" --silent");
+        }
+    }
+
+    /// <summary>
+    /// Imports a task definition instead of <c>schtasks /Create</c>: the command line
+    /// version hard-codes "do not start on batteries" and a 72-hour run limit, which
+    /// would keep the overlay from starting on a laptop and kill it after three days.
+    /// </summary>
+    private static void ImportTask()
+    {
+        var sid = WindowsIdentity.GetCurrent().User?.Value ?? "";
+        var exe = SecurityElement.Escape(ExePath) ?? "";
+        var xml = $"""
+                   <?xml version="1.0" encoding="UTF-16"?>
+                   <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+                     <RegistrationInfo>
+                       <Description>Taskbar Monitor overlay at logon</Description>
+                     </RegistrationInfo>
+                     <Triggers>
+                       <LogonTrigger>
+                         <Enabled>true</Enabled>
+                         <UserId>{sid}</UserId>
+                       </LogonTrigger>
+                     </Triggers>
+                     <Principals>
+                       <Principal id="Author">
+                         <UserId>{sid}</UserId>
+                         <LogonType>InteractiveToken</LogonType>
+                         <RunLevel>HighestAvailable</RunLevel>
+                       </Principal>
+                     </Principals>
+                     <Settings>
+                       <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+                       <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+                       <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+                       <AllowHardTerminate>true</AllowHardTerminate>
+                       <StartWhenAvailable>false</StartWhenAvailable>
+                       <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+                       <IdleSettings>
+                         <StopOnIdleEnd>false</StopOnIdleEnd>
+                         <RestartOnIdle>false</RestartOnIdle>
+                       </IdleSettings>
+                       <AllowStartOnDemand>true</AllowStartOnDemand>
+                       <Enabled>true</Enabled>
+                       <Hidden>false</Hidden>
+                       <RunOnlyIfIdle>false</RunOnlyIfIdle>
+                       <WakeToRun>false</WakeToRun>
+                       <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+                       <Priority>7</Priority>
+                     </Settings>
+                     <Actions Context="Author">
+                       <Exec>
+                         <Command>"{exe}"</Command>
+                         <Arguments>--silent</Arguments>
+                       </Exec>
+                     </Actions>
+                   </Task>
+                   """;
+
+        var file = Path.Combine(Path.GetTempPath(), "TaskbarMonitor.task.xml");
+        try
+        {
+            File.WriteAllText(file, xml, Encoding.Unicode);
+            Run("schtasks.exe", $"/Create /TN \"{TaskName}\" /XML \"{file}\" /F");
+        }
+        catch (Exception ex) { Log.Error("startup task import", ex); }
+        finally
+        {
+            try { File.Delete(file); } catch { }
         }
     }
 
