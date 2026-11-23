@@ -93,13 +93,18 @@ denied:
   `UpdateLayout()`. `RedrawWindow` on move/resize/close prevents ghost pixels.
   Placement is clamped inside the taskbar and left of the tray, and the tray gap
   applies to manual offsets too.
+  Every tick re-asserts `HWND_TOPMOST` (not only when the block moves): the shell
+  raises `Shell_TrayWnd` above topmost windows when it animates the bar — window
+  minimize/restore, thumbnails, flyouts — and a covered overlay never recovers by
+  itself otherwise. This shows up on the primary monitor only, because the shell
+  does not reorder `Shell_SecondaryTrayWnd`.
 - `ShowInFullscreen` (default off) keeps the overlay visible while the shell has
   hidden the taskbar for a full-screen program. `Fullscreen.Refresh` runs on a 1 s
   timer and uses `SHQueryUserNotificationState` (`QUNS_BUSY` /
   `QUNS_RUNNING_D3D_FULL_SCREEN`) with a foreground-window fallback that ignores
   captioned, desktop and shell windows. The overlay then reuses the last seen
   taskbar rect (`_lastBar`/`_lastTrayLeft`), or `HiddenBar()` when it started
-  during full-screen, and re-asserts `HWND_TOPMOST` every tick.
+  during full-screen.
 - The Disk widget reads a single partition (`BlockSettings.DiskDrive`, empty = the
   Windows drive): space from `DriveInfo`, activity from `\LogicalDisk(X:)\% Disk
   Time` with `PhysicalDisk(_Total)` as the fallback. A missing drive resolves to

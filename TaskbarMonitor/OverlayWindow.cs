@@ -110,7 +110,6 @@ public sealed class OverlayWindow : Window
 
         RECT bar;
         int trayLeft;
-        var overFullscreen = false;
 
         if (!taskbar.IsHidden)
         {
@@ -123,7 +122,6 @@ public sealed class OverlayWindow : Window
         {
             // A full-screen app hides the taskbar but the readings stay where the
             // bar was. Before we ever saw it, rebuild that strip from the monitor.
-            overFullscreen = true;
             bar = _lastBar ?? HiddenBar(taskbar);
             trayLeft = _lastTrayLeft ?? bar.Right;
         }
@@ -158,12 +156,13 @@ public sealed class OverlayWindow : Window
         SetVisible(true);
         if (Opacity < 1) Opacity = 1;
 
-        if (overFullscreen)
-        {
-            // A full-screen window can raise itself above us; take the top back.
-            Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
-                Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
-        }
+        // The shell raises the primary taskbar above topmost windows whenever it
+        // animates it (window minimize/restore, thumbnails, flyouts), and a
+        // topmost window never falls back below us on its own. Take the top back
+        // every tick instead of only when the block moves, otherwise the
+        // readings can stay hidden behind the bar indefinitely.
+        Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
+            Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
 
         if (x == current.Left && y == current.Top) return;
 
