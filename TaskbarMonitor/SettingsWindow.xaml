@@ -481,6 +481,101 @@
                                 <ComboBox x:Name="NetUnitCombo" Grid.Column="1" Width="190" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
+
+                        <TextBlock Text="READINGS" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource Card}" Margin="0,8,0,20">
+                            <StackPanel>
+                                <Grid Margin="16,11">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Update every" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="How often the sensors are read, in milliseconds." Style="{StaticResource RowDesc}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Width="250">
+                                        <Slider x:Name="RefreshSlider" Width="180" Minimum="250" Maximum="10000"
+                                                TickFrequency="50" IsSnapToTickEnabled="True" />
+                                        <TextBox x:Name="RefreshValue" Width="55" Height="26" MinHeight="26" Margin="8,0,0,0"
+                                                 TextAlignment="Right" VerticalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="WARNINGS" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource Card}" Margin="0,8,0,20">
+                            <StackPanel>
+                                <Grid Margin="16,11">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Amber above (%)" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="CPU, GPU, RAM and disk percentages turn amber." Style="{StaticResource RowDesc}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Width="250">
+                                        <Slider x:Name="PercentAmberSlider" Width="180" Minimum="50" Maximum="99"
+                                                TickFrequency="1" IsSnapToTickEnabled="True" />
+                                        <TextBox x:Name="PercentAmberValue" Width="55" Height="26" MinHeight="26" Margin="8,0,0,0"
+                                                 TextAlignment="Right" VerticalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{DynamicResource LineSoft}" Margin="16,0" />
+                                <Grid Margin="16,11">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Red above (%)" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="Percentages turn red above this level." Style="{StaticResource RowDesc}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Width="250">
+                                        <Slider x:Name="PercentRedSlider" Width="180" Minimum="60" Maximum="100"
+                                                TickFrequency="1" IsSnapToTickEnabled="True" />
+                                        <TextBox x:Name="PercentRedValue" Width="55" Height="26" MinHeight="26" Margin="8,0,0,0"
+                                                 TextAlignment="Right" VerticalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{DynamicResource LineSoft}" Margin="16,0" />
+                                <Grid Margin="16,11">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Amber above (°C)" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="CPU and GPU temperatures turn amber." Style="{StaticResource RowDesc}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Width="250">
+                                        <Slider x:Name="TempAmberSlider" Width="180" Minimum="60" Maximum="109"
+                                                TickFrequency="1" IsSnapToTickEnabled="True" />
+                                        <TextBox x:Name="TempAmberValue" Width="55" Height="26" MinHeight="26" Margin="8,0,0,0"
+                                                 TextAlignment="Right" VerticalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{DynamicResource LineSoft}" Margin="16,0" />
+                                <Grid Margin="16,11">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Red above (°C)" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="Temperatures turn red above this level." Style="{StaticResource RowDesc}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Width="250">
+                                        <Slider x:Name="TempRedSlider" Width="180" Minimum="70" Maximum="115"
+                                                TickFrequency="1" IsSnapToTickEnabled="True" />
+                                        <TextBox x:Name="TempRedValue" Width="55" Height="26" MinHeight="26" Margin="8,0,0,0"
+                                                 TextAlignment="Right" VerticalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
 

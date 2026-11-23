@@ -3,8 +3,8 @@
 Live system readings on the Windows taskbar, next to the tray icons:
 
 ```
-↑ 0.2 Mbps   CPU 42% (68°C)   RAM 40% (6.4/15.8G)
-↓ 7.2 Mbps   GPU 12% (52°C VRAM 1.2/4.0G)   DISK 3% (54.2/128G)
+↑ 0.2 Mbps   CPU 42% (68°C 4.5GHz)   RAM 40% (6.4/15.8G)
+↓ 7.2 Mbps   GPU 12% (52°C Fan 34%)   DISK 3% (54.2/128G)
 ```
 
 Works on Windows 10 and Windows 11 (x64). No installation, no background services.
@@ -14,16 +14,16 @@ Works on Windows 10 and Windows 11 (x64). No installation, no background service
 | Reading | Source |
 |---|---|
 | CPU usage | `GetSystemTimes` deltas |
-| CPU temperature | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
+| CPU temperature, frequency | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
 | RAM used / total | `GlobalMemoryStatusEx` |
-| GPU usage, VRAM, temperature | NVIDIA NVML (driver `nvml.dll`) |
+| GPU usage, VRAM, temperature, fan | NVIDIA NVML (driver `nvml.dll`) |
 | Network upload / download | per-adapter byte counters |
 | Disk activity / space | PDH `LogicalDisk` counter for the chosen drive + `DriveInfo` |
 | Battery | `GetSystemPowerStatus` |
 
 GPU values need an NVIDIA card. Without one the GPU blocks show `--`; everything
-else keeps working. CPU temperature additionally needs the app to run as
-administrator **and the [PawnIO](https://pawnio.eu) driver installed**:
+else keeps working. CPU temperature and frequency additionally need the app to run
+as administrator **and the [PawnIO](https://pawnio.eu) driver installed**:
 LibreHardwareMonitor 0.9.6 reads the chipset through PawnIO instead of the
 WinRing0 driver that Microsoft now blocks. Without either, the temperature is
 simply omitted.
@@ -44,15 +44,16 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
 ## Settings
 
 - **Widgets** – enable/disable every reading; show/hide the name, icon,
-  temperature, VRAM and used/total amount. The layout is fixed: Network,
-  then CPU/GPU, RAM/Disk and Battery. Percentages are always the main value. The
-  Disk widget has a **Drive** picker; it defaults to the drive Windows is installed
-  on, and both the activity and the used/total space follow that partition.
-  Switching on CPU temperature on a standard-user run offers to restart
-  the app as administrator.
+  temperature, frequency, VRAM, fan and used/total amount. The layout is fixed:
+  Network, then CPU/GPU, RAM/Disk and Battery. Percentages are always the main
+  value. The Disk widget has a **Drive** picker; it defaults to the drive Windows
+  is installed on, and both the activity and the used/total space follow that
+  partition. Switching on CPU temperature or frequency on a standard-user run
+  offers to restart the app as administrator.
 - **Appearance** – theme of the settings window (auto/light/dark), font and size,
   spacing and network unit (Mbps or MB/s). The taskbar readings have no background
-  panel; they draw straight onto the taskbar.
+  panel; they draw straight onto the taskbar. **Update every** sets how often the
+  sensors are read (250–10000 ms).
 - **Position** – all monitors or one monitor, gap from the tray, offset from the
   right edge, vertical offset, and a Reset button. Values can be typed as well as
   dragged; `0` offset means "just left of the tray icons", and the gap applies to
@@ -62,9 +63,11 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
   is off by default and only applies while Windows has hidden the taskbar.
 - **Startup** – start with Windows, optionally elevated through a scheduled task
   (Windows then does not ask for permission on every logon).
+- **Warnings** – the levels where percentages turn amber and red (80 % and 92 % by
+  default) and where temperatures do (85 °C and 95 °C by default).
 
-Values turn amber above 80% and red above 92%. Temperatures turn amber at 85 °C
-and red at 95 °C.
+Values turn amber above 80% and red above 92% by default; temperatures at
+85 °C and 95 °C. All four levels are adjustable in Appearance → Warnings.
 
 ## Build
 

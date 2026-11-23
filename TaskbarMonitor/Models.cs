@@ -29,6 +29,8 @@ public sealed class BlockSettings
     public bool ShowTemperature { get; set; } = true;
     public bool ShowVram { get; set; } = true;
     public bool ShowAmount { get; set; } = true;
+    public bool ShowClock { get; set; } = true;
+    public bool ShowFan { get; set; } = true;
 
     /// <summary>Drive shown by the Disk widget ("C:"); null means the Windows drive.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -57,6 +59,11 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; }
     public bool StartElevated { get; set; }
     public string NetUnit { get; set; } = "Mbps";         // Mbps | MB/s
+
+    public double WarnPercent { get; set; } = 80;         // reading turns amber above this
+    public double CriticalPercent { get; set; } = 92;     // ...and red above this
+    public double WarnTempC { get; set; } = 85;
+    public double CriticalTempC { get; set; } = 95;
 
     public List<BlockSettings> Blocks { get; set; } = DefaultBlocks();
 
@@ -131,6 +138,10 @@ public sealed class AppSettings
         GapFromTray = Math.Clamp(GapFromTray, 0, 80);
         OffsetFromRight = Math.Clamp(OffsetFromRight, 0, 900);
         OffsetY = Math.Clamp(OffsetY, -30, 40);
+        WarnPercent = Math.Clamp(WarnPercent, 50, 99);
+        CriticalPercent = Math.Clamp(Math.Max(CriticalPercent, WarnPercent + 1), 60, 100);
+        WarnTempC = Math.Clamp(WarnTempC, 60, 109);
+        CriticalTempC = Math.Clamp(Math.Max(CriticalTempC, WarnTempC + 1), 70, 115);
         if (string.IsNullOrWhiteSpace(FontFamily)) FontFamily = "Segoe UI";
         if (NetUnit != "MB/s") NetUnit = "Mbps";
         if (Theme is not ("Auto" or "Light" or "Dark")) Theme = "Auto";
@@ -155,8 +166,8 @@ public static class MetricKindInfo
     public static string Title(this MetricKind k) => k switch
     {
         MetricKind.Network or MetricKind.NetUp or MetricKind.NetDown => "Network speed (upload & download)",
-        MetricKind.Cpu => "CPU usage & temperature",
-        MetricKind.Gpu or MetricKind.Vram => "GPU usage, VRAM & temperature",
+        MetricKind.Cpu => "CPU usage, temperature & frequency",
+        MetricKind.Gpu or MetricKind.Vram => "GPU usage, VRAM, temperature & fan",
         MetricKind.Ram => "RAM used / total",
         MetricKind.Disk or MetricKind.DiskActivity or MetricKind.DiskSpace => "Disk activity & space",
         MetricKind.Battery => "Battery level",
@@ -187,8 +198,8 @@ public static class MetricKindInfo
     public static string Description(this MetricKind k) => k switch
     {
         MetricKind.Network or MetricKind.NetUp or MetricKind.NetDown => "Upload and download of active adapters",
-        MetricKind.Cpu => "Usage and temperature",
-        MetricKind.Gpu or MetricKind.Vram => "Usage, VRAM and temperature",
+        MetricKind.Cpu => "Usage, temperature and clock speed",
+        MetricKind.Gpu or MetricKind.Vram => "Usage, VRAM, temperature and fan speed",
         MetricKind.Ram => "Memory in use out of total",
         MetricKind.Disk or MetricKind.DiskActivity or MetricKind.DiskSpace => "Activity and used space of the chosen drive",
         MetricKind.Battery => "Charge level and power source",
@@ -198,6 +209,11 @@ public static class MetricKindInfo
     public static bool SupportsAmount(this MetricKind k) => k is MetricKind.Ram or MetricKind.Disk;
 
     public static bool SupportsTemperature(this MetricKind k) => k is MetricKind.Cpu or MetricKind.Gpu;
+
+    /// <summary>CPU frequency comes from the same LHM/PawnIO read as the temperature.</summary>
+    public static bool SupportsClock(this MetricKind k) => k == MetricKind.Cpu;
+
+    public static bool SupportsFan(this MetricKind k) => k == MetricKind.Gpu;
 }
 
 public static class SettingsStore

@@ -124,7 +124,10 @@ denied:
   Battery. A disabled reading keeps its slot; a fully empty column is dropped.
   Visibility lives only in the Widgets switches. The percentage is always the
   primary value (and the warning-color source); `ShowAmount` gates the RAM/Disk
-  used/total extra, `ShowVram` the GPU memory.
+  used/total extra, `ShowVram` the GPU memory, `ShowClock` the CPU frequency
+  (LHM, admin-gated) and `ShowFan` the GPU fan (NVML). Warning colors come from
+  `WarnPercent`/`CriticalPercent`/`WarnTempC`/`CriticalTempC` (clamped in
+  `AppSettings.Normalize`), set from Appearance → Readings/Warnings.
 - Widget names are fixed: `MetricKind.DefaultLabel()` (Network has none). There
   is no custom label; do not reintroduce a `Label` setting.
 - `MetricKind.Vram`, `DiskActivity`, `DiskSpace`, `NetUp`, `NetDown` are legacy

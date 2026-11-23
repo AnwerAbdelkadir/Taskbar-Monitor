@@ -9,12 +9,14 @@ public sealed class MetricsSnapshot
 {
     public double CpuPercent;
     public double CpuTemp = double.NaN;
+    public double CpuClock = double.NaN;      // MHz, fastest core
 
     public long RamUsed;
     public long RamTotal;
 
     public double GpuPercent = double.NaN;
     public double GpuTemp = double.NaN;
+    public double GpuFan = double.NaN;        // percent of the first fan
     public long VramUsed;
     public long VramTotal;
 
@@ -293,6 +295,7 @@ public sealed class NvidiaGpu : IDisposable
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int MemoryFn(IntPtr device, out NvmlMemory memory);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int UtilFn(IntPtr device, out NvmlUtilization utilization);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int TempFn(IntPtr device, int sensor, out uint temperature);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FanFn(IntPtr device, int fan, out uint speed);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NvmlMemory { public ulong Total, Free, Used; }
@@ -307,6 +310,7 @@ public sealed class NvidiaGpu : IDisposable
     private MemoryFn? _memory;
     private UtilFn? _utilization;
     private TempFn? _temperature;
+    private FanFn? _fan;
 
     public bool Available { get; private set; }
 
@@ -326,6 +330,7 @@ public sealed class NvidiaGpu : IDisposable
             _memory = Bind<MemoryFn>("nvmlDeviceGetMemoryInfo");
             _utilization = Bind<UtilFn>("nvmlDeviceGetUtilizationRates");
             _temperature = Bind<TempFn>("nvmlDeviceGetTemperature");
+            _fan = Bind<FanFn>("nvmlDeviceGetFanSpeed_v2") ?? Bind<FanFn>("nvmlDeviceGetFanSpeed");
 
             if (count is null || handle is null || _memory is null) return;
             if (_init() != 0) return;
@@ -367,6 +372,10 @@ public sealed class NvidiaGpu : IDisposable
             if (_temperature is not null && _temperature(_device, 0, out var temperature) == 0 &&
                 temperature is > 0 and < 125)
                 snapshot.GpuTemp = temperature;
+
+            // Desktop cards stop their fans when idle, so 0 % is a real reading.
+            if (_fan is not null && _fan(_device, 0, out var fan) == 0 && fan <= 100)
+                snapshot.GpuFan = fan;
         }
         catch (Exception ex)
         {
@@ -457,6 +466,32 @@ public sealed class CpuTemperatures
                         name.Contains("Tctl", StringComparison.OrdinalIgnoreCase))
                         return sensor.Value.Value;
                     best = double.IsNaN(best) ? sensor.Value.Value : Math.Max(best, sensor.Value.Value);
+                }
+                return best;
+            }
+            catch
+            {
+                return double.NaN;
+            }
+        }
+    }
+
+    /// <summary>Fastest core clock in MHz — the number people read as "the" CPU speed.</summary>
+    public double SampleClock()
+    {
+        lock (_gate)
+        {
+            if (_computer is null || _cpu is null) return double.NaN;
+            try
+            {
+                _cpu.Update();
+                double best = double.NaN;
+                foreach (var sensor in _cpu.Sensors)
+                {
+                    if (sensor.SensorType != SensorType.Clock || !sensor.Value.HasValue) continue;
+                    var value = sensor.Value.Value;
+                    if (value <= 0 || value >= 15000) continue;
+                    best = double.IsNaN(best) ? value : Math.Max(best, value);
                 }
                 return best;
             }

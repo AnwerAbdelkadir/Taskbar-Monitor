@@ -150,6 +150,17 @@ public partial class SettingsWindow : Window
         BindNumber(RightOffsetSlider, RightOffsetValue);
         BindNumber(VerticalSlider, VerticalValue);
 
+        RefreshSlider.ValueChanged += (_, _) => Apply();
+        PercentAmberSlider.ValueChanged += (_, _) => Apply();
+        PercentRedSlider.ValueChanged += (_, _) => Apply();
+        TempAmberSlider.ValueChanged += (_, _) => Apply();
+        TempRedSlider.ValueChanged += (_, _) => Apply();
+        BindNumber(RefreshSlider, RefreshValue);
+        BindNumber(PercentAmberSlider, PercentAmberValue);
+        BindNumber(PercentRedSlider, PercentRedValue);
+        BindNumber(TempAmberSlider, TempAmberValue);
+        BindNumber(TempRedSlider, TempRedValue);
+
         StartWithWindowsCheck.Checked += (_, _) => StartupChanged();
         StartWithWindowsCheck.Unchecked += (_, _) => StartupChanged();
         StartElevatedCheck.Checked += (_, _) => StartupChanged();
@@ -173,6 +184,11 @@ public partial class SettingsWindow : Window
         GapSlider.Value = settings.GapFromTray;
         RightOffsetSlider.Value = settings.OffsetFromRight;
         VerticalSlider.Value = settings.OffsetY;
+        RefreshSlider.Value = Math.Clamp(settings.RefreshMs, 250, 10000);
+        PercentAmberSlider.Value = settings.WarnPercent;
+        PercentRedSlider.Value = settings.CriticalPercent;
+        TempAmberSlider.Value = settings.WarnTempC;
+        TempRedSlider.Value = settings.CriticalTempC;
         StartWithWindowsCheck.IsChecked = settings.StartWithWindows;
         StartElevatedCheck.IsChecked = settings.StartElevated;
 
@@ -341,8 +357,13 @@ public partial class SettingsWindow : Window
         if (block.Kind.SupportsTemperature())
             toggles.Children.Add(OptionChip("Temperature", block.ShowTemperature,
                 v => SetAdminOption(block, v, x => block.ShowTemperature = x), NeedsAdmin(block.Kind)));
+        if (block.Kind.SupportsClock())
+            toggles.Children.Add(OptionChip("Frequency", block.ShowClock,
+                v => SetAdminOption(block, v, x => block.ShowClock = x), NeedsAdmin(block.Kind)));
         if (block.Kind == MetricKind.Gpu)
             toggles.Children.Add(OptionChip("VRAM", block.ShowVram, v => { block.ShowVram = v; Apply(); }));
+        if (block.Kind == MetricKind.Gpu)
+            toggles.Children.Add(OptionChip("Fan", block.ShowFan, v => { block.ShowFan = v; Apply(); }));
         panel.Children.Add(toggles);
 
         if (block.Kind == MetricKind.Disk) panel.Children.Add(BuildDrivePicker(block));
@@ -482,6 +503,11 @@ public partial class SettingsWindow : Window
         settings.GapFromTray = Math.Round(GapSlider.Value);
         settings.OffsetFromRight = Math.Round(RightOffsetSlider.Value);
         settings.OffsetY = Math.Round(VerticalSlider.Value);
+        settings.RefreshMs = (int)Math.Round(RefreshSlider.Value);
+        settings.WarnPercent = Math.Round(PercentAmberSlider.Value);
+        settings.CriticalPercent = Math.Round(PercentRedSlider.Value);
+        settings.WarnTempC = Math.Round(TempAmberSlider.Value);
+        settings.CriticalTempC = Math.Round(TempRedSlider.Value);
         settings.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
         settings.StartElevated = StartElevatedCheck.IsChecked == true;
     }

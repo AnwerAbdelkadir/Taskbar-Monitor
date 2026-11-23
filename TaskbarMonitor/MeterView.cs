@@ -112,7 +112,7 @@ internal sealed class MetricView : StackPanel, IMetricView
         var alertPercent = _block.Kind is MetricKind.Cpu or MetricKind.Gpu or MetricKind.Ram
             ? percent
             : double.NaN;
-        var alert = AlertBrush(alertPercent, palette);
+        var alert = AlertBrush(alertPercent, settings, palette);
 
         _label.Text = _block.ShowLabel ? LabelText(snapshot) : "";
         _label.Visibility = _label.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -154,7 +154,19 @@ internal sealed class MetricView : StackPanel, IMetricView
         {
             // Some laptops report 0 °C while the discrete GPU is powered down.
             if (!_block.ShowTemperature || !(celsius > 0) || celsius > 125) return;
-            extras.Add(new Extra($"{celsius:0}°C", celsius >= 85, celsius >= 95));
+            extras.Add(new Extra($"{celsius:0}°C", celsius >= settings.WarnTempC, celsius >= settings.CriticalTempC));
+        }
+
+        void AddClock(double megahertz)
+        {
+            if (!_block.ShowClock || !(megahertz > 0) || megahertz >= 15000) return;
+            extras.Add(new Extra(megahertz >= 1000 ? $"{megahertz / 1000.0:0.#}GHz" : $"{megahertz:0}MHz", false));
+        }
+
+        void AddFan(double percent)
+        {
+            if (!_block.ShowFan || double.IsNaN(percent) || percent is < 0 or > 100) return;
+            extras.Add(new Extra($"Fan {percent:0}%", false));
         }
 
         switch (_block.Kind)
@@ -163,12 +175,14 @@ internal sealed class MetricView : StackPanel, IMetricView
                 percent = s.CpuPercent;
                 value = $"{s.CpuPercent:0}%";
                 AddTemperature(s.CpuTemp);
+                AddClock(s.CpuClock);
                 break;
 
             case MetricKind.Gpu:
                 percent = s.GpuPercent;
                 value = double.IsNaN(s.GpuPercent) ? "--" : $"{s.GpuPercent:0}%";
                 AddTemperature(s.GpuTemp);
+                AddFan(s.GpuFan);
                 if (_block.ShowVram && s.VramTotal > 0)
                     extras.Add(new Extra($"VRAM {Gib(s.VramUsed):0.0}/{Gib(s.VramTotal):0.0}G", false));
                 break;
@@ -205,11 +219,11 @@ internal sealed class MetricView : StackPanel, IMetricView
         return (value, extras, percent);
     }
 
-    private SolidColorBrush? AlertBrush(double percent, Palette palette)
+    private SolidColorBrush? AlertBrush(double percent, AppSettings settings, Palette palette)
     {
         if (double.IsNaN(percent)) return null;
-        if (percent >= 92) return palette.Critical;
-        if (percent >= 80) return palette.Warning;
+        if (percent >= settings.CriticalPercent) return palette.Critical;
+        if (percent >= settings.WarnPercent) return palette.Warning;
         return null;
     }
 
