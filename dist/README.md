@@ -70,6 +70,9 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
   (Windows then does not ask for permission on every logon).
 - **Warnings** – the levels where percentages turn amber and red (80 % and 92 % by
   default) and where temperatures do (85 °C and 95 °C by default).
+- **Alerts** – when enabled (default), a value that stays above its red level for
+  a minute raises a note above the taskbar with a sound; it stays quiet until
+  the value recovers.
 
 Values turn amber above 80% and red above 92% by default; temperatures at
 85 °C and 95 °C. All four levels are adjustable in Appearance → Warnings.

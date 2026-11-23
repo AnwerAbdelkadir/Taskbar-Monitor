@@ -504,8 +504,7 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="WARNINGS" Style="{StaticResource SectionTitle}" />
-                        <Border Style="{StaticResource Card}" Margin="0,8,0,20">
+                        <TextBlock Text="WARNINGS" Style="{StaticResource SectionTitle}" />                        <Border Style="{StaticResource Card}" Margin="0,8,0,20">
                             <StackPanel>
                                 <Grid Margin="16,11">
                                     <Grid.ColumnDefinitions>
@@ -575,6 +574,23 @@
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="ALERTS" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource Card}" Margin="0,8,0,20">
+                            <Grid Margin="16,11">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,24,0">
+                                    <TextBlock Text="Critical alerts" Style="{StaticResource RowTitle}" />
+                                    <TextBlock Text="A note above the taskbar with a sound when a value stays above its red level for a minute."
+                                               Style="{StaticResource RowDesc}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <CheckBox x:Name="AlertsCheck" Grid.Column="1" Style="{StaticResource Switch}"
+                                          VerticalAlignment="Center" />
+                            </Grid>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>

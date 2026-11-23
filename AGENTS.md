@@ -162,6 +162,12 @@ denied:
   to. `GraphsWindow.cs` draws it as sparklines on a 1 s timer and is opened by
   left-clicking the overlay (`App.ShowGraphs`, single instance); its chrome stays
   dark in both themes, like the settings sidebar. It only draws while open.
+- `Alerts.cs` evaluates every snapshot on the UI thread (`App`'s Metrics.Updated
+  handler): a value above its critical threshold for a full minute raises one
+  borderless popup near the primary tray plus `SystemSounds.Exclamation`, then
+  stays suppressed until the value recovers. `AppSettings.AlertsEnabled` gates it
+  (Appearance → Alerts). Thresholds cannot be lowered below sane floors
+  (Normalize clamps them), so testing needs real load, not settings tricks.
 - Settings apply live and auto-save (400 ms debounce via `QueueSave`).
   `Settings.Theme` styles only the settings window: `ApplyChrome()` copies
   `Palette.AppColors(dark)` into those keys (sidebar and dark title bar stay

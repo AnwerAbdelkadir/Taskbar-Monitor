@@ -156,6 +156,8 @@ public partial class SettingsWindow : Window
         PercentRedSlider.ValueChanged += (_, _) => Apply();
         TempAmberSlider.ValueChanged += (_, _) => Apply();
         TempRedSlider.ValueChanged += (_, _) => Apply();
+        AlertsCheck.Checked += (_, _) => Apply();
+        AlertsCheck.Unchecked += (_, _) => Apply();
         BindNumber(RefreshSlider, RefreshValue);
         BindNumber(PercentAmberSlider, PercentAmberValue);
         BindNumber(PercentRedSlider, PercentRedValue);
@@ -190,6 +192,7 @@ public partial class SettingsWindow : Window
         PercentRedSlider.Value = settings.CriticalPercent;
         TempAmberSlider.Value = settings.WarnTempC;
         TempRedSlider.Value = settings.CriticalTempC;
+        AlertsCheck.IsChecked = settings.AlertsEnabled;
         StartWithWindowsCheck.IsChecked = settings.StartWithWindows;
         StartElevatedCheck.IsChecked = settings.StartElevated;
 
@@ -637,6 +640,7 @@ public partial class SettingsWindow : Window
         settings.CriticalPercent = Math.Round(PercentRedSlider.Value);
         settings.WarnTempC = Math.Round(TempAmberSlider.Value);
         settings.CriticalTempC = Math.Round(TempRedSlider.Value);
+        settings.AlertsEnabled = AlertsCheck.IsChecked == true;
         settings.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
         settings.StartElevated = StartElevatedCheck.IsChecked == true;
     }

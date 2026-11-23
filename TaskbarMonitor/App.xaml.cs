@@ -92,6 +92,7 @@ public partial class App : Application
         {
             foreach (var overlay in Overlays) overlay.UpdateValues(snapshot);
             SettingsWindowInstance?.UpdatePreview(false);
+            Alerts.Check(snapshot, Settings);
         }));
 
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
