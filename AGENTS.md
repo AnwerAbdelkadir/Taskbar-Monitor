@@ -93,11 +93,12 @@ denied:
   `UpdateLayout()`. `RedrawWindow` on move/resize/close prevents ghost pixels.
   Placement is clamped inside the taskbar and left of the tray, and the tray gap
   applies to manual offsets too.
-  Every tick re-asserts `HWND_TOPMOST` (not only when the block moves): the shell
-  raises `Shell_TrayWnd` above topmost windows when it animates the bar — window
-  minimize/restore, thumbnails, flyouts — and a covered overlay never recovers by
-  itself otherwise. This shows up on the primary monitor only, because the shell
-  does not reorder `Shell_SecondaryTrayWnd`.
+  Every tick re-asserts `HWND_TOPMOST` through a dedicated 25 ms guard (the
+  placement tick stays at 150 ms): the shell raises `Shell_TrayWnd` above topmost
+  windows for the ~100 ms its button animations run — window minimize/restore,
+  thumbnails, flyouts — and a covered overlay never recovers by itself otherwise.
+  This shows up on the primary monitor only, because the shell does not reorder
+  `Shell_SecondaryTrayWnd`.
 - `ShowInFullscreen` (default off) keeps the overlay visible while the shell has
   hidden the taskbar for a full-screen program. `Fullscreen.Refresh` runs on a 1 s
   timer and uses `SHQueryUserNotificationState` (`QUNS_BUSY` /

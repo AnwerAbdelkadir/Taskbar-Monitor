@@ -12,6 +12,7 @@ public sealed class OverlayWindow : Window
     private readonly MeterView _view = new();
     private readonly string _monitorDevice;
     private readonly DispatcherTimer _positionTimer;
+    private readonly DispatcherTimer _topmostTimer;
     private IntPtr _hwnd;
     private IntPtr _taskbarHwnd;
     private bool _shown = true;
@@ -51,6 +52,13 @@ public sealed class OverlayWindow : Window
         _positionTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background,
             (_, _) => Position(), Dispatcher);
         _positionTimer.Start();
+
+        // The shell holds the bar up for only ~100 ms at a time, which 150 ms is
+        // still too slow for, so a dedicated guard keeps the z-order clean without
+        // repeating the placement work. 25 ms keeps the gap under two frames.
+        _topmostTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(25), DispatcherPriority.Background,
+            (_, _) => RaiseTopmost(), Dispatcher);
+        _topmostTimer.Start();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -230,6 +238,18 @@ public sealed class OverlayWindow : Window
         Native.ShowWindow(_hwnd, visible ? Native.SW_SHOWNOACTIVATE : Native.SW_HIDE);
     }
 
+    /// <summary>
+    /// Stays at the top of the topmost band. The shell re-raises the taskbar on
+    /// every button animation (minimize/restore, thumbnails) and a topmost window
+    /// it lifted above us would cover the readings until the next placement tick.
+    /// </summary>
+    private void RaiseTopmost()
+    {
+        if (_hwnd == IntPtr.Zero || !_shown) return;
+        Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
+            Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+    }
+
     private ContextMenu CreateMenu()
     {
         var menu = new ContextMenu();
@@ -276,6 +296,7 @@ public sealed class OverlayWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _positionTimer.Stop();
+        _topmostTimer.Stop();
 
         var area = default(RECT);
         var hasArea = _hwnd != IntPtr.Zero && Native.GetWindowRect(_hwnd, out area) && area.Right > area.Left;
