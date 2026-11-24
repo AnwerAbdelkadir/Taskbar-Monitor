@@ -33,6 +33,8 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
 
+        FooterText.Text = "Changes apply instantly and are saved automatically.  ·  v" + AppVersion.Display;
+
         PreviewMeterHost.Child = _preview;
         BuildChoices();
         LoadFromSettings();

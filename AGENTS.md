@@ -43,6 +43,18 @@ three displays, vertical taskbars are implemented but untested.
 
   Then copy `TaskbarMonitor/README.md` to `dist/README.md`; that copy is manual,
   not part of publish.
+- Release after changes (the user asked the agent to run the whole chain). Bump
+  `<Version>` in `TaskbarMonitor.csproj` (features → minor, fixes → patch), build
+  and publish as above, then commit, tag `v<version>`, push `main` + tags, and
+  attach the exe to a GitHub release:
+
+  ```
+  gh release create v1.0.0 dist\TaskbarMonitor.exe -t "v1.0.0" -n "<notes>"
+  ```
+
+  `gh` is not on PATH; run `%LOCALAPPDATA%\GitHubCLI\extract\bin\gh.exe`. The repo
+  is public and git credentials live in Windows Credential Manager, so push works
+  without re-auth.
 - Debug and `dist` copies share `%AppData%\TaskbarMonitor` (settings + log), so
   switching between them keeps configuration. The running copy locks its own exe,
   so a build or a publish over it fails.

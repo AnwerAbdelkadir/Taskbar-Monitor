@@ -791,7 +791,7 @@
             <!-- Footer -->
             <Border Grid.Row="3" Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0" Padding="28,12">
                 <Grid>
-                    <TextBlock Text="Changes apply instantly and are saved automatically."
+                    <TextBlock x:Name="FooterText" Text="Changes apply instantly and are saved automatically."
                                Style="{StaticResource Caption}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Reset defaults" Style="{StaticResource SecondaryButton}"

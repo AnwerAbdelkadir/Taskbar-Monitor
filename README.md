@@ -10,6 +10,7 @@ small transparent strip that sits right next to the tray icons.
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white">
   <img alt="x64" src="https://img.shields.io/badge/platform-x64-lightgrey">
   <img alt="Portable" src="https://img.shields.io/badge/portable-no%20install-2ea44f">
+  <img alt="Latest release" src="https://img.shields.io/github/v/release/AnwerAbdelkadir/Taskbar-Monitor">
 </p>
 
 No installer, no background service, no telemetry — one self-contained `.exe`
