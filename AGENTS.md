@@ -130,6 +130,14 @@ denied:
   its button animations run — window minimize/restore, thumbnails, flyouts — and a
   covered overlay never recovers by itself otherwise. This shows up on the primary
   monitor only, because the shell does not reorder `Shell_SecondaryTrayWnd`.
+  While its own flyouts are open the shell keeps the primary bar above **every**
+  topmost window: a brand-new topmost window is covered too, and `HWND_TOP`,
+  `HWND_TOPMOST` re-asserts, `NOTOPMOST/TOPMOST` toggles, hide/show, `SetWindowBand`
+  and `SetParent` into `Shell_TrayWnd` all fail to win (all tried on 26200). So
+  `ShellFlyout` (foreground window class + owning process) makes `Position` hide the
+  primary overlay for those seconds and show it again when the foreground returns;
+  the secondary taskbars are never raised that way. Positioning the block above the
+  bar during Start was tried and rejected: the jump looks worse than the hide.
 - `ShowInFullscreen` (default off) is enforced by `OverlayWindow.Position`, per
   monitor: the overlay hides when `Fullscreen.ActiveOn(_monitorDevice)` is true, and
   as a second guard when the foreground window covers the strip it would occupy

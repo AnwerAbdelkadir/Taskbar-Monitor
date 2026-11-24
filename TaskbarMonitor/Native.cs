@@ -77,6 +77,7 @@ internal static class Native
     public const int SW_HIDE = 0;
     public const int SW_SHOWNOACTIVATE = 4;
     public const uint MONITOR_DEFAULTTONEAREST = 2;
+    public const uint GA_ROOT = 2;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool GetSystemTimes(out FILETIME idle, out FILETIME kernel, out FILETIME user);
@@ -159,6 +160,9 @@ internal static class Native
 
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hWnd, uint flags);
 
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);

@@ -11,6 +11,7 @@ public sealed class OverlayWindow : Window
 {
     private readonly MeterView _view = new();
     private readonly string _monitorDevice;
+    private readonly bool _primary;
     private readonly DispatcherTimer _positionTimer;
     private readonly DispatcherTimer _topmostTimer;
     private IntPtr _hwnd;
@@ -22,6 +23,8 @@ public sealed class OverlayWindow : Window
     public OverlayWindow(string monitorDevice)
     {
         _monitorDevice = monitorDevice;
+        _primary = string.Equals(WinForms.Screen.PrimaryScreen?.DeviceName, monitorDevice,
+            StringComparison.OrdinalIgnoreCase);
 
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
@@ -117,6 +120,17 @@ public sealed class OverlayWindow : Window
 
         var taskbar = FindTaskbar();
         if (taskbar is null)
+        {
+            SetVisible(false);
+            return;
+        }
+
+        // The shell holds the primary taskbar above every topmost window while its
+        // flyouts are open (a fresh topmost window is covered too), so the block
+        // cannot be drawn over the bar: hide it until the menu closes instead of
+        // leaving it half-covered under the bar. Lifting the block above the bar
+        // was tried and looks worse than the clean hide.
+        if (_primary && ShellFlyout.IsOpen())
         {
             SetVisible(false);
             return;
