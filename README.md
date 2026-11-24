@@ -120,7 +120,8 @@ TaskbarMonitor/bin/Debug/net8.0-windows/TaskbarMonitor.exe
 ## Troubleshooting
 
 - **CPU temperature / frequency missing** — the app must run as administrator
-  *and* PawnIO must be installed once: run `PawnIO_setup.exe -install` elevated
+  *and* PawnIO must be installed once: press **Install the PawnIO driver** under
+  Startup → Sensor status, or run `PawnIO_setup.exe -install` elevated yourself
   (from the [PawnIO releases](https://github.com/namazso/PawnIO.Setup/releases)).
   `/S` does not work — it exits with code 87 and installs nothing.
 - **GPU shows `--`** — the card is not visible to NVML or LibreHardwareMonitor

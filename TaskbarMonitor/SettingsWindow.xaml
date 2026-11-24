@@ -764,6 +764,9 @@
                         <Border Style="{StaticResource Card}" Margin="0,8,0,0">
                             <StackPanel Margin="16,12">
                                 <TextBlock x:Name="CpuStatusText" Style="{StaticResource RowDesc}" />
+                                <Button x:Name="InstallPawnIoButton" Content="Install the PawnIO driver"
+                                        Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left"
+                                        Margin="0,8,0,0" Visibility="Collapsed" Click="InstallPawnIo_Click" />
                                 <TextBlock x:Name="GpuStatusText" Style="{StaticResource RowDesc}" Margin="0,6,0,0" />
                                 <TextBlock x:Name="StartupStatusText" Style="{StaticResource RowDesc}" Margin="0,10,0,0" />
                             </StackPanel>

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +19,9 @@ public partial class SettingsWindow : Window
     private BlockSettings? _selectedBlock;
     private bool _loading;
     private bool? _chromeDark;
+
+    private const string PawnIoUrl =
+        "https://github.com/namazso/PawnIO.Setup/releases/latest/download/PawnIO_setup.exe";
 
     private sealed record MonitorEntry(string Device, string Display)
     {
@@ -669,6 +673,11 @@ public partial class SettingsWindow : Window
             ? "CPU temperature — " + App.Metrics.CpuTemps.Status
             : "CPU temperature — reading sensors…";
 
+        var temps = App.Metrics.CpuTemps;
+        InstallPawnIoButton.Visibility = temps.InitializationFinished && !temps.Available && !PawnIoInstalled()
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         GpuStatusText.Text = App.Metrics.GpuStatus;
 
         StartupStatusText.Text = App.Settings.StartWithWindows
@@ -685,6 +694,67 @@ public partial class SettingsWindow : Window
             "Taskbar Monitor", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
         if (answer == MessageBoxResult.Yes) App.RestartElevated();
+    }
+
+    /// <summary>LibreHardwareMonitor 0.9.6 reads the CPU through PawnIO, which ships separately.</summary>
+    private static bool PawnIoInstalled()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\PawnIO");
+            return key is not null;
+        }
+        catch { return false; }
+    }
+
+    private async void InstallPawnIo_Click(object sender, RoutedEventArgs e)
+    {
+        var button = (Button)sender;
+        var label = button.Content;
+        button.IsEnabled = false;
+        button.Content = "Downloading…";
+
+        var file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "PawnIO_setup.exe");
+        try
+        {
+            using var http = new HttpClient();
+            File.WriteAllBytes(file, await http.GetByteArrayAsync(PawnIoUrl));
+
+            button.Content = "Installing…";
+            using var setup = Process.Start(new ProcessStartInfo(file, "-install")
+            {
+                UseShellExecute = true,
+                Verb = "runas"
+            });
+            if (setup is not null) await setup.WaitForExitAsync();
+
+            if (!PawnIoInstalled())
+            {
+                MessageBox.Show(this, "PawnIO is not installed.", "Taskbar Monitor",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var answer = MessageBox.Show(this,
+                "PawnIO is installed. Restart Taskbar Monitor as administrator to read the CPU temperature now?",
+                "Taskbar Monitor", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Yes) App.RestartElevated();
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            /* UAC prompt declined */
+        }
+        catch (Exception ex)
+        {
+            Log.Error("install pawnio", ex);
+            MessageBox.Show(this, "Could not install PawnIO: " + ex.Message, "Taskbar Monitor",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            button.Content = label;
+            button.IsEnabled = true;
+        }
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
