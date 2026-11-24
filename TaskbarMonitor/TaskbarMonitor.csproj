@@ -14,7 +14,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>TaskbarMonitor</AssemblyName>
     <RootNamespace>TaskbarMonitor</RootNamespace>
-    <Version>1.4.2</Version>
+    <Version>1.4.3</Version>
     <Product>Taskbar Monitor</Product>
     <Description>Live CPU, GPU, RAM, VRAM, network and disk readings next to the Windows taskbar tray.</Description>
     <Deterministic>true</Deterministic>

@@ -109,6 +109,10 @@ The published folder is portable: copy it anywhere and run `TaskbarMonitor.exe`.
   strip itself as a second check for borderless players that never trip the shell
   state. With the option on, the readings stay where they are and the overlay
   re-asserts topmost each tick.
+- Opening the Start menu, search, quick settings or task view hides the readings on
+  the primary monitor for as long as it is open. Windows holds the taskbar above
+  every topmost window while those are up, so nothing can be drawn over it; the
+  other monitors keep their readings.
 - Vertical taskbars get a floating block beside the taskbar instead of a rotated
   layout.
 - CPU temperature depends on PawnIO: LibreHardwareMonitor loads its signed driver
