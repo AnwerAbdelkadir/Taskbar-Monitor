@@ -9,6 +9,11 @@ three displays, vertical taskbars are implemented but untested.
 
 ## Repo gotchas
 
+- The root `README.md` is the GitHub face of the project and the canonical feature
+  list: refresh it after every feature change, and re-capture the `assets/`
+  screenshots (TaskbarMonitor itself, settings window, graphs window) when the UI
+  changes. `dist/README.md` is the end-user copy of `TaskbarMonitor/README.md`,
+  copied by hand on publish — not of the root README.
 - The root `.gitignore` ignores only `dist/TaskbarMonitor.exe`, so publishing adds
   nothing to `git status`. `dist/README.md` **is** tracked and must be refreshed by
   hand after every publish.
