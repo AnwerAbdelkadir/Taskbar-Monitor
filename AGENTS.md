@@ -112,13 +112,13 @@ denied:
   active adapter, filtered against loopback, tunnels and the usual virtual NIC
   descriptions). An explicit pick bypasses the filters, so a VPN or virtual NIC can
   be watched on purpose; the picker lives in the Network widget row.
-- The Disk widget exists once per drive: several `BlockSettings` with
-  `Kind == Disk` are allowed (Normalize dedupes by drive, null being the Windows
-  drive). The metrics snapshot carries `Disks` (resolved drive → activity/space),
-  `MetricsService` keeps one `DiskSampler` per drive, and `MeterView.PlanColumns`
-  expands the Disk kind into one item per block — pairs stay stable, extra disks
-  pair with each other before Battery. "Add drive"/"Remove" live in each Disk row;
-  the first Disk block cannot be removed.
+- One Disk widget, one Drive picker. `Normalize` folds any extra Disk blocks
+  (written by an earlier multi-disk build) into the first. The plumbing below
+  still has a per-drive shape on purpose: the snapshot carries a `Disks`
+  dictionary (resolved drive → activity/space) and `MetricsService` owns one
+  `DiskSampler` per drive, because the graphs and alerts sit on top of it; with
+  a single widget it holds exactly one entry. `MeterView.PlanColumns` works on
+  blocks (not kinds) and would expand several Disk blocks if they ever existed.
 - The overlay panel's fill is `MeterView.HitTestFill` (black at alpha 1), not
   `Transparent`: a layered window with zero alpha is click-through, so
   right-click would stop working between the readings.

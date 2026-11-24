@@ -123,14 +123,10 @@ public sealed class AppSettings
         MergeLegacy(MetricKind.Gpu, MetricKind.Vram);
         MergeLegacy(MetricKind.Disk, MetricKind.DiskActivity, MetricKind.DiskSpace);
 
-        // Several Disk widgets are allowed, but each drive only once; a duplicate
-        // folds into the first block for that drive (null counts as the Windows drive).
-        var seenDrives = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var disk in Blocks.Where(b => b.Kind == MetricKind.Disk).ToList())
-        {
-            if (!seenDrives.Add(disk.DiskDrive ?? ""))
-                Blocks.Remove(disk);
-        }
+        // One Disk widget: extra Disk blocks (written by the multi-disk builds)
+        // fold into the first one on load.
+        foreach (var extra in Blocks.Where(b => b.Kind == MetricKind.Disk).Skip(1).ToList())
+            Blocks.Remove(extra);
 
         var supported = LayoutOrder();
         foreach (var kind in supported)

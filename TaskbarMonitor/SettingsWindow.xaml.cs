@@ -371,77 +371,12 @@ public partial class SettingsWindow : Window
         panel.Children.Add(toggles);
 
         if (block.Kind == MetricKind.Disk)
-        {
             panel.Children.Add(BuildDrivePicker(block));
-            panel.Children.Add(BuildDriveExtras(block));
-        }
         if (block.Kind == MetricKind.Network) panel.Children.Add(BuildAdapterPicker());
 
         return panel;
     }
 
-    /// <summary>"Add drive" for every Disk row; "Remove" on the extra disks only.</summary>
-    private FrameworkElement BuildDriveExtras(BlockSettings block)
-    {
-        var row = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 10, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        var add = new Button
-        {
-            Content = "Add drive",
-            Style = (Style)FindResource("SecondaryButton")
-        };
-        add.Click += (_, _) =>
-        {
-            var used = App.Settings.Blocks.Where(b => b.Kind == MetricKind.Disk)
-                .Select(b => b.DiskDrive ?? DiskSampler.SystemDrive())
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var next = DriveInfo.GetDrives()
-                .Where(d => d.IsReady && d.DriveType == DriveType.Fixed)
-                .Select(d => d.Name.TrimEnd('\\').ToUpperInvariant())
-                .FirstOrDefault(name => !used.Contains(name));
-
-            var fresh = new BlockSettings
-            {
-                Kind = MetricKind.Disk,
-                Enabled = true,
-                ShowTemperature = false,
-                DiskDrive = next ?? DiskSampler.SystemDrive()
-            };
-            App.Settings.Blocks.Add(fresh);
-            App.Settings.Normalize();
-            Apply();
-            _selectedBlock = fresh;
-            RebuildBlocks();
-        };
-        row.Children.Add(add);
-
-        var firstDisk = App.Settings.Blocks.FirstOrDefault(b => b.Kind == MetricKind.Disk);
-        if (!ReferenceEquals(block, firstDisk))
-        {
-            var remove = new Button
-            {
-                Content = "Remove",
-                Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(8, 0, 0, 0)
-            };
-            remove.Click += (_, _) =>
-            {
-                App.Settings.Blocks.Remove(block);
-                App.Settings.Normalize();
-                _selectedBlock = null;
-                Apply();
-                RebuildBlocks();
-            };
-            row.Children.Add(remove);
-        }
-
-        return row;
-    }
 
     /// <summary>Fixed drives as "C:  476 GB   (Windows)"; the default is the Windows drive.</summary>
     private FrameworkElement BuildDrivePicker(BlockSettings block)
