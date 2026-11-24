@@ -51,8 +51,11 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
   is installed on, and both the activity and the used/total space follow that
   partition. The Network widget has an **Adapter** picker; the default measures
   every active adapter, and picking a specific one (a VPN, a virtual NIC) makes
-  it follow just that adapter. Switching on CPU temperature or frequency on a
-  standard-user run offers to restart the app as administrator.
+  it follow just that adapter. CPU temperature and frequency are off on a fresh
+  install, and their switches stay locked until the app runs as administrator with
+  PawnIO installed: clicking a locked switch only reveals the hint with
+  **Restart as administrator** / **Install the PawnIO driver**, and the reading
+  turns on once the switch is flipped after that.
 - **Appearance** – theme of the settings window (auto/light/dark), font and size,
   spacing and network unit (Mbps or MB/s). The taskbar readings have no background
   panel; they draw straight onto the taskbar. **Update every** sets how often the
@@ -101,10 +104,11 @@ The published folder is portable: copy it anywhere and run `TaskbarMonitor.exe`.
 - Vertical taskbars get a floating block beside the taskbar instead of a rotated
   layout.
 - CPU temperature depends on PawnIO: LibreHardwareMonitor loads its signed driver
-  and needs the PawnIO setup installed once (administrator). When it is missing the
-  reading stays hidden — CPU usage still works — and **Startup → Sensor status**
-  offers an **Install the PawnIO driver** button (downloads the official setup and
-  runs it elevated). No driver file is written next to the exe any more.
+  and needs the PawnIO setup installed once (administrator). The CPU and GPU
+  widget rows show an **Install the PawnIO driver** button while it is missing
+  (the button downloads the official setup and runs it elevated); CPU temperature
+  and frequency are off on a fresh install and stay hidden until switched on and
+  the app runs elevated. No driver file is written next to the exe any more.
 - On a desktop with no battery, the battery block is force-disabled and its
   switches are locked.
 - The settings window follows its own theme; the dark title bar and sidebar stay

@@ -225,7 +225,20 @@ denied:
   prompts a restart (`SetAdminOption` → `App.RestartElevated`), which relaunches
   with `--replace` and reopens the settings window. Declining flips the switch
   back off. GPU temperature/VRAM/fan come from NVML (or the LHM fallback) and are
-  never gated.
+  never gated. The expanded CPU/GPU widget row carries the hint that explains the
+  empty reading: `BuildSensorHint`/`UpdateSensorHint` (refreshed by the 2 s status
+  timer) show **Restart as administrator** and/or **Install the PawnIO driver** —
+  the latter downloads `PawnIO_setup.exe` from the release and runs it `-install`
+  elevated, then offers the restart. It is hidden on first open: the locked chips
+  (`OptionChip` with a `LockReason`) stay dimmed and un-toggleable, and a click on
+  one only reveals the hint (`_hintRevealed`), so the buttons appear when the user
+  reaches for Temperature/Frequency/VRAM/Fan, not before. `PawnIoInstalled()` needs
+  the `PawnIO` service key **and** `%ProgramFiles%\PawnIO\PawnIOLib.dll` (the
+  official uninstaller leaves the key behind); the GPU hint needs
+  `Metrics.GpuUsesLhm`, because NVIDIA reads through NVML. GPU `--` on Intel/AMD is
+  the same missing driver. `DefaultBlocks` starts the CPU block with
+  `ShowTemperature`/`ShowClock` off; GPU temperature stays on (NVML) — do not put
+  the install UI back on Startup.
 - Startup is the HKCU Run key, or a scheduled task with `/RL HIGHEST` when
   elevated startup is enabled. The shipped setup uses the task (`StartWithWindows`
   + `StartElevated`) so CPU temperature works from every logon with no UAC prompt.

@@ -86,7 +86,7 @@ public sealed class AppSettings
     public static List<BlockSettings> DefaultBlocks() => new()
     {
         new() { Kind = MetricKind.Network, ShowLabel = false },
-        new() { Kind = MetricKind.Cpu },
+        new() { Kind = MetricKind.Cpu, ShowTemperature = false, ShowClock = false },
         new() { Kind = MetricKind.Gpu },
         new() { Kind = MetricKind.Ram, ShowTemperature = false },
         new() { Kind = MetricKind.Disk, Enabled = false, ShowTemperature = false },

@@ -20,6 +20,14 @@ public partial class SettingsWindow : Window
     private bool _loading;
     private bool? _chromeDark;
 
+    // The admin/PawnIO hint of the expanded widget row; updated from the status timer.
+    private BlockSettings? _sensorHintBlock;
+    private Border? _sensorHint;
+    private TextBlock? _sensorHintText;
+    private Button? _sensorRestartButton;
+    private Button? _sensorInstallButton;
+    private bool _hintRevealed;
+
     private const string PawnIoUrl =
         "https://github.com/namazso/PawnIO.Setup/releases/latest/download/PawnIO_setup.exe";
 
@@ -239,6 +247,11 @@ public partial class SettingsWindow : Window
     private void RebuildBlocks()
     {
         BlocksPanel.Children.Clear();
+        _sensorHintBlock = null;
+        _sensorHint = null;
+        _sensorHintText = null;
+        _sensorRestartButton = null;
+        _sensorInstallButton = null;
 
         var blocks = App.Settings.Blocks.OrderBy(b => (int)b.Kind).ToList();
         for (var i = 0; i < blocks.Count; i++)
@@ -364,25 +377,131 @@ public partial class SettingsWindow : Window
         toggles.Children.Add(OptionChip("Name", block.ShowLabel, v => { block.ShowLabel = v; Apply(); }));
         if (block.Kind.SupportsAmount())
             toggles.Children.Add(OptionChip("Used / total", block.ShowAmount, v => { block.ShowAmount = v; Apply(); }));
+
+        // The admin/PawnIO chips stay locked until the reading can actually work.
+        var lockReason = LockReason(block.Kind);
         if (block.Kind.SupportsTemperature())
             toggles.Children.Add(OptionChip("Temperature", block.ShowTemperature,
-                v => SetAdminOption(block, v, x => block.ShowTemperature = x), NeedsAdmin(block.Kind)));
+                v => { block.ShowTemperature = v; Apply(); }, lockReason));
         if (block.Kind.SupportsClock())
             toggles.Children.Add(OptionChip("Frequency", block.ShowClock,
-                v => SetAdminOption(block, v, x => block.ShowClock = x), NeedsAdmin(block.Kind)));
+                v => { block.ShowClock = v; Apply(); }, lockReason));
         if (block.Kind == MetricKind.Gpu)
-            toggles.Children.Add(OptionChip("VRAM", block.ShowVram, v => { block.ShowVram = v; Apply(); }));
+            toggles.Children.Add(OptionChip("VRAM", block.ShowVram,
+                v => { block.ShowVram = v; Apply(); }, lockReason));
         if (block.Kind == MetricKind.Gpu)
-            toggles.Children.Add(OptionChip("Fan", block.ShowFan, v => { block.ShowFan = v; Apply(); }));
+            toggles.Children.Add(OptionChip("Fan", block.ShowFan,
+                v => { block.ShowFan = v; Apply(); }, lockReason));
         panel.Children.Add(toggles);
 
         if (block.Kind == MetricKind.Disk)
             panel.Children.Add(BuildDrivePicker(block));
         if (block.Kind == MetricKind.Network) panel.Children.Add(BuildAdapterPicker());
+        if (block.Kind is MetricKind.Cpu or MetricKind.Gpu) panel.Children.Add(BuildSensorHint(block));
 
         return panel;
     }
 
+    /// <summary>Explains why the admin/PawnIO readings stay empty, with the matching fix.</summary>
+    private FrameworkElement BuildSensorHint(BlockSettings block)
+    {
+        if (!ReferenceEquals(_sensorHintBlock, block)) _hintRevealed = false;
+        _sensorHintBlock = block;
+
+        _sensorHintText = new TextBlock
+        {
+            Style = (Style)FindResource("RowDesc"),
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 430,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+
+        _sensorRestartButton = new Button
+        {
+            Content = "Restart as administrator",
+            Style = (Style)FindResource("SecondaryButton"),
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        _sensorRestartButton.Click += RestartAdmin_Click;
+
+        _sensorInstallButton = new Button
+        {
+            Content = "Install the PawnIO driver",
+            Style = (Style)FindResource("SecondaryButton")
+        };
+        _sensorInstallButton.Click += InstallPawnIo_Click;
+
+        var buttons = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
+        buttons.Children.Add(_sensorRestartButton);
+        buttons.Children.Add(_sensorInstallButton);
+
+        var row = new StackPanel();
+        row.Children.Add(_sensorHintText);
+        row.Children.Add(buttons);
+
+        _sensorHint = new Border
+        {
+            Child = row,
+            Background = (Brush)FindResource("Chip"),
+            CornerRadius = new CornerRadius(7),
+            Padding = new Thickness(10, 8, 10, 8),
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        UpdateSensorHint();
+        return _sensorHint;
+    }
+
+    /// <summary>Runs from the 2 s status timer, so a finished install shows up by itself.</summary>
+    private void UpdateSensorHint()
+    {
+        if (_sensorHint is null || _sensorHintText is null || _sensorHintBlock is null) return;
+
+        var block = _sensorHintBlock;
+        var cpu = block.Kind == MetricKind.Cpu;
+        var needsAdmin = cpu && !App.IsElevated;
+        var needsDriver = !PawnIoInstalled() && (cpu || App.Metrics.GpuUsesLhm);
+
+        // Hidden until the user reaches for a locked chip, so a fresh install shows no buttons.
+        var show = _hintRevealed && (needsAdmin || needsDriver);
+        _sensorHint.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!show) return;
+
+        _sensorHintText.Text = cpu
+            ? "CPU temperature and frequency need administrator access"
+              + (needsDriver ? " and the PawnIO driver." : ".")
+            : "GPU temperature, fan and memory read through the PawnIO driver on Intel and AMD.";
+
+        if (_sensorRestartButton is not null)
+            _sensorRestartButton.Visibility = needsAdmin ? Visibility.Visible : Visibility.Collapsed;
+        if (_sensorInstallButton is not null)
+            _sensorInstallButton.Visibility = needsDriver ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>A locked chip was clicked: show the fix and keep the reading off.</summary>
+    private void RevealLockedHint()
+    {
+        _hintRevealed = true;
+        UpdateSensorHint();
+    }
+
+    /// <summary>Why the temperature/clock chips of this widget cannot work yet; null when they can.</summary>
+    private string? LockReason(MetricKind kind)
+    {
+        var cpu = kind == MetricKind.Cpu;
+        if (!cpu && !App.Metrics.GpuUsesLhm) return null;      // NVIDIA reads through NVML
+
+        var admin = !cpu || App.IsElevated;
+        var driver = PawnIoInstalled();
+        if (admin && driver) return null;
+
+        return (admin, driver) switch
+        {
+            (false, false) => "Needs administrator and the PawnIO driver",
+            (false, true) => "Needs administrator",
+            _ => "Needs the PawnIO driver"
+        };
+    }
 
     /// <summary>Fixed drives as "C:  476 GB   (Windows)"; the default is the Windows drive.</summary>
     private FrameworkElement BuildDrivePicker(BlockSettings block)
@@ -505,37 +624,14 @@ public partial class SettingsWindow : Window
 
     private sealed record AdapterEntry(string Id, string Label);
 
-    /// <summary>CPU temperature comes from LibreHardwareMonitor, which needs admin.</summary>
-    private static bool NeedsAdmin(MetricKind kind) => kind == MetricKind.Cpu;
-
-    private void SetAdminOption(BlockSettings block, bool on, Action<bool> assign)
+    private FrameworkElement OptionChip(string text, bool value, Action<bool> changed, string? lockReason = null)
     {
-        assign(on);
-        Apply();
-
-        if (!on || App.IsElevated || !NeedsAdmin(block.Kind)) return;
-
-        var answer = MessageBox.Show(this,
-            "CPU temperature needs administrator access.\n\nRestart Taskbar Monitor as administrator now?",
-            "Taskbar Monitor", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-        if (answer == MessageBoxResult.Yes)
-        {
-            App.RestartElevated();
-            return;
-        }
-
-        assign(false);
-        Apply();
-        RebuildBlocks();
-    }
-
-    private FrameworkElement OptionChip(string text, bool value, Action<bool> changed, bool adminOnly = false)
-    {
+        var locked = lockReason is not null;
         var box = new CheckBox
         {
             Style = (Style)FindResource("Switch"),
             IsChecked = value,
+            Opacity = locked ? 0.55 : 1,
             VerticalAlignment = VerticalAlignment.Center
         };
         box.Checked += (_, _) => changed(true);
@@ -551,15 +647,29 @@ public partial class SettingsWindow : Window
         });
         content.Children.Add(box);
 
-        return new Border
+        var chip = new Border
         {
             Child = content,
             Background = (Brush)FindResource("Chip"),
             CornerRadius = new CornerRadius(7),
             Padding = new Thickness(10, 4, 10, 4),
             Margin = new Thickness(0, 0, 8, 8),
-            ToolTip = adminOnly && !App.IsElevated ? "Needs administrator" : null
+            ToolTip = lockReason
         };
+
+        // A locked chip never flips; the click explains what is missing instead.
+        if (locked)
+        {
+            chip.PreviewMouseLeftButtonDown += (_, e) => { e.Handled = true; RevealLockedHint(); };
+            box.PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key is not (Key.Space or Key.Enter)) return;
+                e.Handled = true;
+                RevealLockedHint();
+            };
+        }
+
+        return chip;
     }
 
     private void ReadControls()
@@ -673,10 +783,7 @@ public partial class SettingsWindow : Window
             ? "CPU temperature — " + App.Metrics.CpuTemps.Status
             : "CPU temperature — reading sensors…";
 
-        var temps = App.Metrics.CpuTemps;
-        InstallPawnIoButton.Visibility = temps.InitializationFinished && !temps.Available && !PawnIoInstalled()
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        UpdateSensorHint();
 
         GpuStatusText.Text = App.Metrics.GpuStatus;
 
@@ -696,13 +803,15 @@ public partial class SettingsWindow : Window
         if (answer == MessageBoxResult.Yes) App.RestartElevated();
     }
 
-    /// <summary>LibreHardwareMonitor 0.9.6 reads the CPU through PawnIO, which ships separately.</summary>
+    /// <summary>LibreHardwareMonitor 0.9.6 loads PawnIOLib.dll from here and reads through the driver.</summary>
     private static bool PawnIoInstalled()
     {
         try
         {
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\PawnIO");
-            return key is not null;
+            var lib = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PawnIO", "PawnIOLib.dll");
+            return key is not null && File.Exists(lib);
         }
         catch { return false; }
     }

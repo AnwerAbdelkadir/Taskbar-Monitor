@@ -85,8 +85,12 @@ TaskbarMonitor.exe --replace   take over from a running copy
   used/total, temperature, frequency, VRAM, fan). The **Disk** widget has a
   **Drive** picker (activity and space follow that partition); the **Network**
   widget has an **Adapter** picker (the default measures every active adapter, or
-  pick a VPN / virtual NIC to watch just that one). Turning on CPU temperature or
-  frequency on a standard-user run offers to restart as administrator.
+  pick a VPN / virtual NIC to watch just that one). CPU temperature and
+  frequency start off; their switches stay locked (dimmed, click does nothing but
+  reveal a short hint) until the app runs as administrator and PawnIO is
+  installed. The hint offers **Restart as administrator** and **Install the
+  PawnIO driver** (downloads the official setup and runs it elevated), and the
+  reading only turns on when the user flips the switch after that.
 - **Appearance** — settings-window theme (auto / light / dark), font and size,
   spacing, network unit (Mbps or MB/s) and the refresh interval.
 - **Position** — all monitors or one, gap from the tray, offset from the right
@@ -120,10 +124,13 @@ TaskbarMonitor/bin/Debug/net8.0-windows/TaskbarMonitor.exe
 ## Troubleshooting
 
 - **CPU temperature / frequency missing** — the app must run as administrator
-  *and* PawnIO must be installed once: press **Install the PawnIO driver** under
-  Startup → Sensor status, or run `PawnIO_setup.exe -install` elevated yourself
+  *and* PawnIO must be installed once: open the CPU widget in **Widgets** and
+  press **Install the PawnIO driver**, or run `PawnIO_setup.exe -install` elevated
+  yourself
   (from the [PawnIO releases](https://github.com/namazso/PawnIO.Setup/releases)).
   `/S` does not work — it exits with code 87 and installs nothing.
+- **GPU shows `--` on Intel or AMD** — those GPUs read through LibreHardwareMonitor
+  and need the same PawnIO driver; the GPU widget row offers the same button.
 - **GPU shows `--`** — the card is not visible to NVML or LibreHardwareMonitor
   (very old drivers, a virtual machine, or a GPU running in a passthrough setup).
   Everything else keeps working.

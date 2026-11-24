@@ -14,6 +14,10 @@ public sealed class MetricsService : IDisposable
 
     public CpuTemperatures CpuTemps { get; } = new();
     public bool GpuAvailable => _gpuFallbackActive ? _gpuFallback.Available : _gpu.Available;
+
+    /// <summary>True while GPU readings come from LibreHardwareMonitor (Intel/AMD), which needs PawnIO.</summary>
+    public bool GpuUsesLhm => _gpuFallbackActive;
+
     public string GpuStatus => _gpuFallbackActive
         ? _gpuFallback.Available
             ? "GPU sensors — LibreHardwareMonitor ready."
