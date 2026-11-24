@@ -85,19 +85,31 @@ public static class Fullscreen
         return Native.GetMonitorInfo(monitor, ref info) ? info.Device ?? "" : "";
     }
 
+    /// <summary>True when a program other than the desktop or the shell sits over an area.</summary>
+    public static bool CoversForeground(int left, int top, int width, int height)
+    {
+        var window = Native.GetForegroundWindow();
+        if (window == IntPtr.Zero) return false;
+
+        Native.GetWindowThreadProcessId(window, out var processId);
+        if (processId == Environment.ProcessId) return false;
+
+        // Clicking the desktop makes Progman the foreground window, and it spans
+        // every monitor, so without this the strip would look covered all day.
+        if (IsShellSurface(window)) return false;
+
+        if (!Native.GetWindowRect(window, out var rect)) return false;
+
+        return rect.Left <= left + FrameTolerance &&
+               rect.Top <= top + FrameTolerance &&
+               rect.Right >= left + width - FrameTolerance &&
+               rect.Bottom >= top + height - FrameTolerance;
+    }
+
     private static bool CoversMonitor(IntPtr window)
     {
         // The desktop and the taskbar itself span the monitor but are not apps.
-        var className = new StringBuilder(64);
-        Native.GetClassName(window, className, className.Capacity);
-        switch (className.ToString())
-        {
-            case "Progman":
-            case "WorkerW":
-            case "Shell_TrayWnd":
-            case "Shell_SecondaryTrayWnd":
-                return false;
-        }
+        if (IsShellSurface(window)) return false;
 
         if (!Native.GetWindowRect(window, out var rect)) return false;
 
@@ -115,5 +127,12 @@ public static class Fullscreen
                rect.Top <= area.Top + FrameTolerance &&
                rect.Right >= area.Right - FrameTolerance &&
                rect.Bottom >= area.Bottom - FrameTolerance;
+    }
+
+    private static bool IsShellSurface(IntPtr window)
+    {
+        var className = new StringBuilder(64);
+        Native.GetClassName(window, className, className.Capacity);
+        return className.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
     }
 }

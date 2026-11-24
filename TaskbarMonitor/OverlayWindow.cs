@@ -255,24 +255,10 @@ public sealed class OverlayWindow : Window
     /// <summary>
     /// True when the foreground program sits over the strip the readings would
     /// occupy. The same monitor only: a game on one screen must not hide the
-    /// other taskbars.
+    /// other taskbars, and the desktop or the shell never counts as a program.
     /// </summary>
-    private static bool CoversStrip(int x, int y, int width, int height)
-    {
-        var window = Native.GetForegroundWindow();
-        if (window == IntPtr.Zero) return false;
-
-        Native.GetWindowThreadProcessId(window, out var processId);
-        if (processId == Environment.ProcessId) return false;
-
-        if (!Native.GetWindowRect(window, out var rect)) return false;
-
-        const int tolerance = 2;
-        return rect.Left <= x + tolerance &&
-               rect.Top <= y + tolerance &&
-               rect.Right >= x + width - tolerance &&
-               rect.Bottom >= y + height - tolerance;
-    }
+    private static bool CoversStrip(int x, int y, int width, int height) =>
+        Fullscreen.CoversForeground(x, y, width, height);
 
     private void SetVisible(bool visible)
     {

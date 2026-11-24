@@ -132,7 +132,11 @@ denied:
   monitor only, because the shell does not reorder `Shell_SecondaryTrayWnd`.
 - `ShowInFullscreen` (default off) is enforced by `OverlayWindow.Position`, per
   monitor: the overlay hides when `Fullscreen.ActiveOn(_monitorDevice)` is true, and
-  as a second guard when the foreground window covers the strip it would occupy.
+  as a second guard when the foreground window covers the strip it would occupy
+  (`Fullscreen.CoversForeground`). That guard must skip the desktop and the shell:
+  clicking the desktop makes `Progman` the foreground window, and it spans every
+  monitor, so an unfiltered rect test hid every reading until a program was focused
+  again (shipped in 1.4.1, fixed in 1.4.2).
   Windows does not move or hide `Shell_TrayWnd` for a full-screen program (same
   rect, still `WS_VISIBLE`; measured on 26200), so `TaskbarInfo.IsHidden` stays
   false and cannot be the gate — the old code only consulted `Fullscreen` inside
