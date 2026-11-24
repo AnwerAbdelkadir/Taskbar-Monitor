@@ -101,9 +101,10 @@ The published folder is portable: copy it anywhere and run `TaskbarMonitor.exe`.
 - Vertical taskbars get a floating block beside the taskbar instead of a rotated
   layout.
 - CPU temperature depends on PawnIO: LibreHardwareMonitor loads its signed driver
-  and needs the PawnIO setup installed once (administrator). If PawnIO or the
-  administrator token is missing, the reading stays hidden; CPU usage still works.
-  No driver file is written next to the exe any more.
+  and needs the PawnIO setup installed once (administrator). When it is missing the
+  reading stays hidden — CPU usage still works — and **Startup → Sensor status**
+  offers an **Install the PawnIO driver** button (downloads the official setup and
+  runs it elevated). No driver file is written next to the exe any more.
 - On a desktop with no battery, the battery block is force-disabled and its
   switches are locked.
 - The settings window follows its own theme; the dark title bar and sidebar stay
