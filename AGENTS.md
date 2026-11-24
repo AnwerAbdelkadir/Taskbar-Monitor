@@ -130,13 +130,24 @@ denied:
   its button animations run — window minimize/restore, thumbnails, flyouts — and a
   covered overlay never recovers by itself otherwise. This shows up on the primary
   monitor only, because the shell does not reorder `Shell_SecondaryTrayWnd`.
-- `ShowInFullscreen` (default off) keeps the overlay visible while the shell has
-  hidden the taskbar for a full-screen program. `Fullscreen.Refresh` runs on a 1 s
-  timer and uses `SHQueryUserNotificationState` (`QUNS_BUSY` /
-  `QUNS_RUNNING_D3D_FULL_SCREEN`) with a foreground-window fallback that ignores
-  captioned, desktop and shell windows. The overlay then reuses the last seen
+- `ShowInFullscreen` (default off) is enforced by `OverlayWindow.Position`, per
+  monitor: the overlay hides when `Fullscreen.ActiveOn(_monitorDevice)` is true, and
+  as a second guard when the foreground window covers the strip it would occupy.
+  Windows does not move or hide `Shell_TrayWnd` for a full-screen program (same
+  rect, still `WS_VISIBLE`; measured on 26200), so `TaskbarInfo.IsHidden` stays
+  false and cannot be the gate — the old code only consulted `Fullscreen` inside
+  the hidden-bar branch, which is why the readings stayed over games and players.
+  `Fullscreen.Refresh` runs on a 1 s timer, always measures (it no longer
+  early-returns on the setting) and uses `SHQueryUserNotificationState`
+  (`QUNS_BUSY` / `QUNS_RUNNING_D3D_FULL_SCREEN`) plus a monitor-sized foreground
+  window that ignores captioned, desktop and shell windows; when the shell reports
+  full screen but the foreground window is elsewhere it enumerates visible windows
+  for the covering one, so only that monitor's readings hide. Do not enumerate
+  unconditionally: the NVIDIA overlay's `CEF-OSC-WIDGET` window is a visible,
+  captionless, monitor-sized window on every desktop and would hide the readings
+  for good. With the option on, the overlay keeps drawing and reuses the last seen
   taskbar rect (`_lastBar`/`_lastTrayLeft`), or `HiddenBar()` when it started
-  during full-screen.
+  during full-screen. The state changes are logged as `fullscreen: …`.
 - The Network widget measures the adapter in `AppSettings.NetAdapter` (empty = every
   active adapter, filtered against loopback, tunnels and the usual virtual NIC
   descriptions). An explicit pick bypasses the filters, so a VPN or virtual NIC can

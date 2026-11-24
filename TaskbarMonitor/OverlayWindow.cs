@@ -105,6 +105,16 @@ public sealed class OverlayWindow : Window
     {
         if (_hwnd == IntPtr.Zero) return;
 
+        // Windows keeps the taskbar window where it is for a full-screen program
+        // (same rect, still WS_VISIBLE) and only lowers it below the covering
+        // window, so IsHidden never notices. Enforce the option here, per
+        // monitor, instead of only in the hidden-bar branch further down.
+        if (!App.Settings.ShowInFullscreen && Fullscreen.ActiveOn(_monitorDevice))
+        {
+            SetVisible(false);
+            return;
+        }
+
         var taskbar = FindTaskbar();
         if (taskbar is null)
         {
@@ -165,6 +175,14 @@ public sealed class OverlayWindow : Window
 
             x = Math.Max(bar.Left, right - width);
             y = ClampAxis(bar.Top + (bar.Height - height) / 2 + verticalOffset, height, bar.Top, bar.Bottom);
+        }
+
+        // A borderless program that never trips the shell's full-screen state
+        // still ends up over this strip; the rect comparison catches those.
+        if (!App.Settings.ShowInFullscreen && CoversStrip(x, y, width, height))
+        {
+            SetVisible(false);
+            return;
         }
 
         SetVisible(true);
@@ -232,6 +250,28 @@ public sealed class OverlayWindow : Window
         // Keep the block inside the taskbar even with an extreme vertical offset.
         var max = Math.Max(start, end - size);
         return Math.Clamp(value, start, max);
+    }
+
+    /// <summary>
+    /// True when the foreground program sits over the strip the readings would
+    /// occupy. The same monitor only: a game on one screen must not hide the
+    /// other taskbars.
+    /// </summary>
+    private static bool CoversStrip(int x, int y, int width, int height)
+    {
+        var window = Native.GetForegroundWindow();
+        if (window == IntPtr.Zero) return false;
+
+        Native.GetWindowThreadProcessId(window, out var processId);
+        if (processId == Environment.ProcessId) return false;
+
+        if (!Native.GetWindowRect(window, out var rect)) return false;
+
+        const int tolerance = 2;
+        return rect.Left <= x + tolerance &&
+               rect.Top <= y + tolerance &&
+               rect.Right >= x + width - tolerance &&
+               rect.Bottom >= y + height - tolerance;
     }
 
     private void SetVisible(bool visible)

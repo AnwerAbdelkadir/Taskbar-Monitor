@@ -4,45 +4,89 @@ using System.Text;
 namespace TaskbarMonitor;
 
 /// <summary>
-/// Tells whether a program is currently covering its monitor, which is the only
-/// case where the overlay keeps drawing while the taskbar is hidden.
+/// Tells whether a program is covering a monitor, which is what a full-screen
+/// app looks like to the overlay. Windows never moves or hides the taskbar for
+/// one, so the bar's rect alone cannot answer the question.
 /// </summary>
 public static class Fullscreen
 {
     private const int FrameTolerance = 2;
 
-    public static bool IsActive { get; private set; }
+    private static bool _shellBusy;
+    private static string _logged = "";
+
+    /// <summary>Monitors a covering program sits on; empty when none is known.</summary>
+    private static readonly HashSet<string> Devices = new(StringComparer.OrdinalIgnoreCase);
+
+    public static bool IsActive => _shellBusy || Devices.Count > 0;
+
+    /// <summary>True when a full-screen program covers <paramref name="device"/>.</summary>
+    public static bool ActiveOn(string device) =>
+        IsActive && (device.Length == 0 || Devices.Count == 0 || Devices.Contains(device));
 
     /// <summary>Refreshed about once a second from the UI thread.</summary>
     public static void Refresh()
     {
-        if (!App.Settings.ShowInFullscreen)
-        {
-            IsActive = false;
-            return;
-        }
-
         // The shell keeps this state for full-screen games, players and browsers.
-        if (Native.SHQueryUserNotificationState(out var state) == 0 &&
-            (state == Native.QUNS_BUSY || state == Native.QUNS_RUNNING_D3D_FULL_SCREEN))
-        {
-            IsActive = true;
-            return;
-        }
+        var shellBusy = Native.SHQueryUserNotificationState(out var state) == 0 &&
+                        (state == Native.QUNS_BUSY || state == Native.QUNS_RUNNING_D3D_FULL_SCREEN);
 
         // Borderless windows do not always set that state, so measure the
         // foreground window against the monitor it sits on.
-        IsActive = CoversForegroundMonitor();
+        Devices.Clear();
+        foreach (var device in CoveringDevices(shellBusy)) Devices.Add(device);
+        _shellBusy = shellBusy;
+
+        // Logged on the transition only; this runs once a second forever.
+        var signature = $"{(shellBusy ? "busy" : "idle")}|{string.Join(",", Devices)}";
+        if (signature == _logged) return;
+        _logged = signature;
+        Log.Info($"fullscreen: state={(IsActive ? "active" : "none")} " +
+                 $"shell={(shellBusy ? "fullscreen" : "desktop")} " +
+                 $"devices={(Devices.Count == 0 ? "-" : string.Join(",", Devices))}");
     }
 
-    private static bool CoversForegroundMonitor()
+    /// <summary>
+    /// A covering foreground window is the full-screen program the user sees.
+    /// When the shell reports full screen but the user is still working on
+    /// another monitor, find the covering window instead of hiding every taskbar.
+    /// </summary>
+    private static List<string> CoveringDevices(bool shellBusy)
     {
-        var window = Native.GetForegroundWindow();
-        if (window == IntPtr.Zero) return false;
+        var foreground = DeviceOf(Native.GetForegroundWindow());
+        if (foreground.Length > 0) return new List<string> { foreground };
+        if (!shellBusy) return new List<string>();
+
+        var devices = new List<string>();
+        Native.EnumWindows((window, _) =>
+        {
+            if (!Native.IsWindowVisible(window)) return true;
+            var device = DeviceOf(window);
+            if (device.Length > 0 && !devices.Contains(device, StringComparer.OrdinalIgnoreCase))
+                devices.Add(device);
+            return devices.Count < 4;
+        }, IntPtr.Zero);
+
+        return devices;
+    }
+
+    /// <summary>Device name of the window when it covers its monitor; empty otherwise.</summary>
+    private static string DeviceOf(IntPtr window)
+    {
+        if (window == IntPtr.Zero) return "";
 
         Native.GetWindowThreadProcessId(window, out var processId);
-        if (processId == Environment.ProcessId) return false;
+        if (processId == Environment.ProcessId) return "";
 
+        if (!CoversMonitor(window)) return "";
+
+        var monitor = Native.MonitorFromWindow(window, Native.MONITOR_DEFAULTTONEAREST);
+        var info = new MONITORINFOEX { Size = Marshal.SizeOf<MONITORINFOEX>() };
+        return Native.GetMonitorInfo(monitor, ref info) ? info.Device ?? "" : "";
+    }
+
+    private static bool CoversMonitor(IntPtr window)
+    {
         // The desktop and the taskbar itself span the monitor but are not apps.
         var className = new StringBuilder(64);
         Native.GetClassName(window, className, className.Capacity);

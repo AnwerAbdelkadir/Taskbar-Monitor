@@ -102,10 +102,13 @@ The published folder is portable: copy it anywhere and run `TaskbarMonitor.exe`.
   background, so the taskbar shows through. On Windows 11 the tray is measured
   through UI Automation, because `TrayNotifyWnd` is empty there.
 - It hides itself while the taskbar is auto-hidden, and follows taskbar moves and
-  DPI changes. With **Show over full-screen apps** on, it stays in the same place
-  instead of hiding when the shell hides the taskbar for a full-screen program;
-  `Fullscreen` decides that from `SHQueryUserNotificationState` plus the
-  foreground window, and the overlay re-asserts topmost each tick.
+  DPI changes. A full-screen program hides the readings on that monitor, and only
+  that monitor, unless **Show over full-screen apps** is on. Windows leaves the
+  taskbar window in place for a full-screen app, so `Fullscreen` decides from
+  `SHQueryUserNotificationState` plus a monitor-sized foreground window, with the
+  strip itself as a second check for borderless players that never trip the shell
+  state. With the option on, the readings stay where they are and the overlay
+  re-asserts topmost each tick.
 - Vertical taskbars get a floating block beside the taskbar instead of a rotated
   layout.
 - CPU temperature depends on PawnIO: LibreHardwareMonitor loads its signed driver
