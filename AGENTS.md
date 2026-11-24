@@ -4,19 +4,19 @@ Portable Windows taskbar monitor: one WPF app in `TaskbarMonitor/`; the shipped
 build is the single-file `dist/TaskbarMonitor.exe` (~150 MB, self-contained).
 
 Git repo on `main`, remote `origin` = `AnwerAbdelkadir/Taskbar-Monitor`. Verified
-on Windows 11 (26200) and Windows 10 22H2 (19045); multi-monitor and vertical
-taskbars are implemented but untested.
+on Windows 11 (26200) and Windows 10 22H2 (19045); multi-monitor is exercised on
+three displays, vertical taskbars are implemented but untested.
 
 ## Repo gotchas
 
 - The root `.gitignore` ignores only `dist/TaskbarMonitor.exe`, so publishing adds
   nothing to `git status`. `dist/README.md` **is** tracked and must be refreshed by
   hand after every publish.
-- `dist/TaskbarMonitor.sys` is tracked in the first commit but deleted on disk.
-  Keep it deleted: `git checkout -- .` or `git stash` would resurrect the
-  Defender-flagged WinRing0 driver this app no longer uses.
-- `11111111111` (23 MB) and `ses_*.json` (9 MB) in the root are committed OpenCode
-  session dumps, not app data. Don't mine them for context and don't add more.
+- The old WinRing0 driver `dist/TaskbarMonitor.sys` is deleted since `e25afcc` but
+  still lives in older commits. Never restore it — a checkout or revert of an old
+  revision would bring back the Defender-flagged driver.
+- The first commit also contains OpenCode session dumps (`11111111111`,
+  `ses_*.json`); they are history only now. Do not commit such exports.
 
 ## Build, run, ship
 
@@ -45,8 +45,11 @@ taskbars are implemented but untested.
 ## Verification (no tests exist)
 
 No test project, no CI. Verify by building, launching, and watching the real
-taskbar (`MetricsService.Latest` holds the live snapshot). UIA inspection only
-works on a non-elevated instance — UIPI blocks UI Automation into an elevated one.
+taskbar (`MetricsService.Latest` holds the live snapshot). Elevation is the main
+obstacle: UIPI blocks UI Automation **and** synthetic clicks/keystrokes from a
+normal-integrity process into the running elevated instance, so drive the UI on an
+unelevated Debug run. Open the settings window of the running instance with
+`[System.Threading.EventWaitHandle]::OpenExisting("Local\TaskbarMonitor.ShowSettings").Set()`.
 Edit `%AppData%\TaskbarMonitor\settings.json` **only while the app is closed**:
 `App.ExitApp` saves the in-memory settings over the file, wiping external edits.
 Practical automation: screenshot the taskbar, read
@@ -54,7 +57,8 @@ Practical automation: screenshot the taskbar, read
 `SetFocus` + `SendKeys` (`{F4}`, type the item, `{ENTER}`), and set the Position
 boxes with `ValuePattern.SetValue`. Synthetic clicks do not reach native MessageBox
 buttons; post `WM_COMMAND` with `IDNO` (7) instead. Anything touching CPU
-temperature/power has to be checked in an elevated instance.
+temperature or frequency has to be checked in an elevated instance — both come
+from the same LHM/PawnIO read.
 
 ## Rebuilding while it runs
 
@@ -95,12 +99,11 @@ denied:
   `UpdateLayout()`. `RedrawWindow` on move/resize/close prevents ghost pixels.
   Placement is clamped inside the taskbar and left of the tray, and the tray gap
   applies to manual offsets too.
-  Every tick re-asserts `HWND_TOPMOST` through a dedicated 25 ms guard (the
-  placement tick stays at 150 ms): the shell raises `Shell_TrayWnd` above topmost
-  windows for the ~100 ms its button animations run — window minimize/restore,
-  thumbnails, flyouts — and a covered overlay never recovers by itself otherwise.
-  This shows up on the primary monitor only, because the shell does not reorder
-  `Shell_SecondaryTrayWnd`.
+  A dedicated 25 ms guard re-asserts `HWND_TOPMOST` (the placement tick stays at
+  150 ms): the shell raises `Shell_TrayWnd` above topmost windows for the ~100 ms
+  its button animations run — window minimize/restore, thumbnails, flyouts — and a
+  covered overlay never recovers by itself otherwise. This shows up on the primary
+  monitor only, because the shell does not reorder `Shell_SecondaryTrayWnd`.
 - `ShowInFullscreen` (default off) keeps the overlay visible while the shell has
   hidden the taskbar for a full-screen program. `Fullscreen.Refresh` runs on a 1 s
   timer and uses `SHQueryUserNotificationState` (`QUNS_BUSY` /
@@ -129,6 +132,11 @@ denied:
 - `MeterView` renders two rows from the fixed `AppSettings.LayoutOrder()`:
   Network spans both rows (upload over download), then CPU/GPU, RAM/Disk and
   Battery. A disabled reading keeps its slot; a fully empty column is dropped.
+  `Stabilize()` raises the panel's `MinWidth` to the widest content seen since
+  settings changed: the block is right-anchored, so without it every digit-width
+  change shoves the whole thing sideways. It never shrinks on its own — only
+  `Apply` resets it. Do not right-align or reserve per-widget slots instead; that
+  was tried and looked wrong (480 px block, gaps between values).
   Visibility lives only in the Widgets switches. The percentage is always the
   primary value (and the warning-color source); `ShowAmount` gates the RAM/Disk
   used/total extra, `ShowVram` the GPU memory, `ShowClock` the CPU frequency
@@ -155,6 +163,9 @@ denied:
   `BadgeInk`, `SwitchTrack`, `SliderTrack`, `HoverBg`, `PressedBg`. Any new
   color needs a key in `SettingsWindow.xaml` and an entry in
   `Palette.AppColors()` for both themes, or dark mode shows a stale color.
+  Styles must theme `Foreground` as well as backgrounds: `SecondaryButton` shipped
+  without it and "Reset defaults" was invisible in dark mode until it got
+  `Foreground="{DynamicResource Ink}"`.
   Exception: the preview strip and its clock are set in code from
   `Palette.PreviewBarBackground()`/`palette.Value`, because that mock follows the
   taskbar palette (`Palette.Create`), not the window theme. Do not hard-code it.
@@ -175,16 +186,19 @@ denied:
   ignores the theme and always follows `SystemUsesLightTheme`;
   `palette.Label/Value/…` only color the text, and there are no custom color
   settings.
-- Sensors: CPU temperature needs administrator **and the PawnIO
+- Sensors: CPU temperature and frequency need administrator **and the PawnIO
   driver installed** (LibreHardwareMonitor 0.9.6 uses PawnIO; WinRing0 is gone, so
-  no `.sys` is written next to the exe). GPU needs NVIDIA NVML. Unavailable values
-  are `NaN` and are omitted rather than zeroed. Optimus GPUs error while asleep, so
-  0 % GPU is a deliberate fallback. There is no power (W) reading: `ShowPower` and
-  the CPU/NVML power samples were removed.
-- Admin-gated options: turning on CPU Temperature while not elevated
+  no `.sys` is written next to the exe). Both are LHM sensors on the same `Computer`,
+  but `SampleTemperature`/`SampleClock` each run their own `_cpu.Update()`, so keep
+  further LHM reads off the per-tick path. GPU usage, VRAM, temperature and fan come
+  from NVIDIA NVML. Unavailable values are `NaN` and are omitted rather than zeroed.
+  Optimus GPUs error while asleep, so 0 % GPU is a deliberate fallback; `Fan 0%` is a
+  real reading because desktop cards stop their fans at idle. There is no power (W)
+  reading: `ShowPower` and the CPU/NVML power samples were removed.
+- Admin-gated options: turning on CPU Temperature or Frequency while not elevated
   prompts a restart (`SetAdminOption` → `App.RestartElevated`), which relaunches
   with `--replace` and reopens the settings window. Declining flips the switch
-  back off. GPU temperature/VRAM come from NVML and are never gated.
+  back off. GPU temperature/VRAM/fan come from NVML and are never gated.
 - Startup is the HKCU Run key, or a scheduled task with `/RL HIGHEST` when
   elevated startup is enabled. The shipped setup uses the task (`StartWithWindows`
   + `StartElevated`) so CPU temperature works from every logon with no UAC prompt.

@@ -326,6 +326,10 @@ public sealed class MeterView : UserControl
     private AppSettings _settings = new();
     private Palette _palette = Palette.Create();
 
+    // The readings are right-anchored, so every digit-width change used to shove
+    // the whole block sideways. Keep the widest width seen since settings changed.
+    private double _stickyWidth;
+
     private static Brush CreateHitTestFill()
     {
         var brush = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
@@ -350,6 +354,8 @@ public sealed class MeterView : UserControl
         _panel.Background = HitTestFill;
         _panel.CornerRadius = new CornerRadius(4);
         _panel.Padding = new Thickness(8, 2, 8, 2);
+        _stickyWidth = 0;
+        _panel.MinWidth = 0;
         Rebuild();
     }
 
@@ -471,6 +477,25 @@ public sealed class MeterView : UserControl
     public void UpdateValues(MetricsSnapshot snapshot)
     {
         foreach (var view in _views) view.Update(snapshot, _settings, _palette);
+        Stabilize();
+    }
+
+    /// <summary>
+    /// Holds the width at its largest value since the settings last changed: it
+    /// only grows when a wider reading appears (a new digit, a longer value) and
+    /// never shrinks back on its own, so the block stops shoving itself sideways
+    /// every second. Text keeps its natural left alignment — no reserved slots.
+    /// </summary>
+    private void Stabilize()
+    {
+        var natural = _grid.DesiredSize.Width;
+        if (!(natural > 0)) return;
+
+        var wanted = natural + _panel.Padding.Left + _panel.Padding.Right;
+        if (wanted <= _stickyWidth + 0.5) return;
+
+        _stickyWidth = wanted;
+        _panel.MinWidth = wanted;
     }
 
     public void ApplyStyle(AppSettings settings, Palette palette)
