@@ -238,6 +238,7 @@
         <Style x:Key="SecondaryButton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Foreground" Value="{DynamicResource Ink}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
