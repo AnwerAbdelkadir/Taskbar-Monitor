@@ -11,9 +11,11 @@ three displays, vertical taskbars are implemented but untested.
 
 - The root `README.md` is the GitHub face of the project and the canonical feature
   list: refresh it after every feature change, and re-capture the `assets/`
-  screenshots (TaskbarMonitor itself, settings window, graphs window) when the UI
-  changes. `dist/README.md` is the end-user copy of `TaskbarMonitor/README.md`,
-  copied by hand on publish — not of the root README.
+  screenshots (taskbar strip, settings window, graphs window) when the UI changes.
+  All three are plain desktop captures of the window rects (`CopyFromScreen`), which
+  also works on the elevated instance; the graphs window needs an unelevated copy,
+  because it only opens on a left-click. `dist/README.md` is the end-user copy of
+  `TaskbarMonitor/README.md`, copied by hand on publish — not of the root README.
 - The root `.gitignore` ignores only `dist/TaskbarMonitor.exe`, so publishing adds
   nothing to `git status`. `dist/README.md` **is** tracked and must be refreshed by
   hand after every publish.
@@ -44,17 +46,19 @@ three displays, vertical taskbars are implemented but untested.
   Then copy `TaskbarMonitor/README.md` to `dist/README.md`; that copy is manual,
   not part of publish.
 - Release after changes (the user asked the agent to run the whole chain). Bump
-  `<Version>` in `TaskbarMonitor.csproj` (features → minor, fixes → patch), build
-  and publish as above, then commit, tag `v<version>`, push `main` + tags, and
-  attach the exe to a GitHub release:
+  `<Version>` in `TaskbarMonitor.csproj` (features → minor, fixes → patch) — it also
+  drives the settings footer (`AppVersion.cs`) and the exe file version — build and
+  publish as above, then commit, tag `v<version>`, push `main` + tags, and attach
+  the exe to a GitHub release:
 
   ```
-  gh release create v1.0.0 dist\TaskbarMonitor.exe -t "v1.0.0" -n "<notes>"
+  gh release create v1.1.0 dist\TaskbarMonitor.exe -t "v1.1.0" -n "<notes>"
   ```
 
   `gh` is not on PATH; run `%LOCALAPPDATA%\GitHubCLI\extract\bin\gh.exe`. The repo
   is public and git credentials live in Windows Credential Manager, so push works
-  without re-auth.
+  without re-auth. The README `shields.io/github/v/release` badge follows the latest
+  release automatically.
 - Debug and `dist` copies share `%AppData%\TaskbarMonitor` (settings + log), so
   switching between them keeps configuration. The running copy locks its own exe,
   so a build or a publish over it fails.
@@ -157,7 +161,8 @@ denied:
   Visibility lives only in the Widgets switches. The percentage is always the
   primary value (and the warning-color source); `ShowAmount` gates the RAM/Disk
   used/total extra, `ShowVram` the GPU memory, `ShowClock` the CPU frequency
-  (LHM, admin-gated) and `ShowFan` the GPU fan (NVML). Warning colors come from
+  (LHM, admin-gated) and `ShowFan` the GPU fan (NVML percentage, or rpm from the
+  LHM fallback). Warning colors come from
   `WarnPercent`/`CriticalPercent`/`WarnTempC`/`CriticalTempC` (clamped in
   `AppSettings.Normalize`), set from Appearance → Readings/Warnings.
 - Widget names are fixed: `MetricKind.DefaultLabel()` (Network has none). There
@@ -219,7 +224,8 @@ denied:
 - Admin-gated options: turning on CPU Temperature or Frequency while not elevated
   prompts a restart (`SetAdminOption` → `App.RestartElevated`), which relaunches
   with `--replace` and reopens the settings window. Declining flips the switch
-  back off. GPU temperature/VRAM/fan come from NVML and are never gated.
+  back off. GPU temperature/VRAM/fan come from NVML (or the LHM fallback) and are
+  never gated.
 - Startup is the HKCU Run key, or a scheduled task with `/RL HIGHEST` when
   elevated startup is enabled. The shipped setup uses the task (`StartWithWindows`
   + `StartElevated`) so CPU temperature works from every logon with no UAC prompt.
