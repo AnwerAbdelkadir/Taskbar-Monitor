@@ -27,9 +27,8 @@ three displays, vertical taskbars are implemented but untested.
 
 ## Build, run, ship
 
-- .NET SDK 8.0.428 lives in `%USERPROFILE%\.dotnet\dotnet.exe`. The `dotnet` on
-  PATH is the runtime-only host (`C:\Program Files\dotnet` has no `sdk\`), so
-  invoke the SDK by full path.
+- `dotnet` on PATH is the real SDK (`C:\Program Files\dotnet`, 8.0.428);
+  `%USERPROFILE%\.dotnet` no longer exists.
 - Build: `dotnet build TaskbarMonitor/TaskbarMonitor.csproj -c Debug`
 - Run: `TaskbarMonitor/bin/Debug/net8.0-windows/TaskbarMonitor.exe`
   (no args = settings window, `--silent` = overlay only, `--replace` = take over
@@ -55,7 +54,13 @@ three displays, vertical taskbars are implemented but untested.
   gh release create v1.1.0 dist\TaskbarMonitor.exe -t "v1.1.0" -n "<notes>"
   ```
 
-  `gh` is not on PATH; run `%LOCALAPPDATA%\GitHubCLI\extract\bin\gh.exe`. The repo
+  `gh` is installed at `C:\Program Files\GitHub CLI\gh.exe` (winget) but not
+  logged in, so `gh release create` fails with "not logged into any GitHub hosts".
+  Create the release with the REST API instead, using the PAT that git already
+  stores: `git credential fill` for `host=github.com` returns it, then POST
+  `/repos/.../releases` and upload to `upload_url?name=TaskbarMonitor.exe` with
+  `Content-Type: application/octet-stream` (`Invoke-RestMethod -InFile`). GitHub
+  then publishes the asset `digest`, which the in-app updater verifies. The repo
   is public and git credentials live in Windows Credential Manager, so push works
   without re-auth. The README `shields.io/github/v/release` badge follows the latest
   release automatically.
