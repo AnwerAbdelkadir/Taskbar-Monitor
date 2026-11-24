@@ -755,9 +755,34 @@
                                     <Button Content="Restart as administrator" Style="{StaticResource SecondaryButton}"
                                             Margin="0,0,8,0" Click="RestartAdmin_Click" />
                                     <Button Content="Open settings folder" Style="{StaticResource SecondaryButton}"
-                                            Click="OpenFolder_Click" />
+                                            Margin="0,0,8,0" Click="OpenFolder_Click" />
+                                    <Button Content="Release page" Style="{StaticResource SecondaryButton}"
+                                            Click="OpenReleases_Click" />
                                 </StackPanel>
                             </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="UPDATES" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource Card}" Margin="0,8,0,20">
+                            <Grid Margin="16,11">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,24,0">
+                                    <TextBlock Text="Version" Style="{StaticResource RowTitle}" />
+                                    <TextBlock x:Name="UpdateStatusText" Style="{StaticResource RowDesc}" Margin="0,2,0,0"
+                                               Text="Checks GitHub for a newer release once a day." />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="CheckUpdateButton" Content="Check now"
+                                            Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"
+                                            Click="CheckUpdate_Click" />
+                                    <Button x:Name="InstallUpdateButton" Content="Download and install"
+                                            Style="{StaticResource PrimaryButton}" Visibility="Collapsed"
+                                            Click="InstallUpdate_Click" />
+                                </StackPanel>
+                            </Grid>
                         </Border>
 
                         <TextBlock Text="SENSOR STATUS" Style="{StaticResource SectionTitle}" />

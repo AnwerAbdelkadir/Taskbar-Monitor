@@ -287,6 +287,10 @@ public sealed class OverlayWindow : Window
             };
             menu.Items.Add(startup);
 
+            var update = new MenuItem { Header = "Check for updates" };
+            update.Click += (_, _) => UpdateWindow.ShowUpdate();
+            menu.Items.Add(update);
+
             menu.Items.Add(new Separator());
 
             var exit = new MenuItem { Header = "Exit" };

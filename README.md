@@ -35,6 +35,7 @@ that draws two compact rows over the taskbar and takes up no window space.
 - **Follows the taskbar** — text colors follow the Windows light/dark setting; no panel background.
 - **Starts without UAC** — a scheduled task runs it elevated at logon, so CPU temperature works with no prompt.
 - **Live settings** — every change applies instantly and saves automatically (250–10 000 ms refresh interval).
+- **Updates itself** — the app checks the GitHub release once a day (and shows its own update window on a normal start when one exists); **Check for updates** is also in the taskbar right-click menu and in **Startup → Updates**. One click downloads the new exe into a window with a progress bar, verifies its checksum and restarts into it — no installer, no leftover files.
 
 | Settings | History |
 |---|---|
@@ -75,7 +76,7 @@ TaskbarMonitor.exe --replace   take over from a running copy
 ```
 
 - **Left-click** the readings to open the history window.
-- **Right-click** them for settings, pause, Windows startup and exit.
+- **Right-click** them for settings, pause, Windows startup, **Check for updates** and exit.
 - Running the exe again while it is running opens the settings window (single instance).
 - Settings and the log live in `%AppData%\TaskbarMonitor`.
 
@@ -98,7 +99,8 @@ TaskbarMonitor.exe --replace   take over from a running copy
   strip is clamped inside the taskbar so it never covers the tray. **Show over
   full-screen apps** is off by default.
 - **Startup** — start with Windows, optionally elevated through a scheduled task
-  (no UAC prompt at logon).
+  (no UAC prompt at logon), and the **Updates** row: current version, **Check now**
+  and **Download and install** when a newer release exists.
 - **Warnings** — the amber and red levels for percentages and temperatures.
 - **Alerts** — enable or disable the critical popup.
 

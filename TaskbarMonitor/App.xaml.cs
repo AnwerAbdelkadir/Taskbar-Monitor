@@ -20,6 +20,7 @@ public partial class App : Application
     private static bool? _lastSystemLight;
     private static bool? _lastAppsLight;
     private static bool _shuttingDown;
+    private static bool _silent;
 
     public static AppSettings Settings { get; private set; } = new();
     public static Palette CurrentPalette { get; private set; } = Palette.Create();
@@ -32,6 +33,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        _silent = e.Args.Any(a => a.Equals("--silent", StringComparison.OrdinalIgnoreCase));
 
         _mutex = new Mutex(true, MutexName, out var firstInstance);
         if (!firstInstance)
@@ -61,6 +64,9 @@ public partial class App : Application
                 return;
             }
         }
+
+        // Left behind by the last update; the process that held it has exited now.
+        try { if (Environment.ProcessPath is { } exe) File.Delete(exe + ".old"); } catch { }
 
         IsElevated = CheckElevated();
         Settings = SettingsStore.Load();
@@ -103,7 +109,7 @@ public partial class App : Application
         };
 
         _themeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        _themeTimer.Tick += (_, _) => FollowSystemTheme();
+        _themeTimer.Tick += (_, _) => { FollowSystemTheme(); CheckUpdates(); };
         _themeTimer.Start();
 
         _fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -117,9 +123,9 @@ public partial class App : Application
 
         Metrics.Start(Settings.RefreshMs);
         RebuildOverlays();
+        CheckUpdates();
 
-        if (!e.Args.Any(a => a.Equals("--silent", StringComparison.OrdinalIgnoreCase)))
-            ShowSettings();
+        if (!_silent) ShowSettings();
     }
 
     public static void ShowSettings()
@@ -272,6 +278,27 @@ public partial class App : Application
         _mutex = null;
 
         Current.Shutdown();
+    }
+
+    private static DateTime _lastUpdateCheck;
+
+    /// <summary>Silent GitHub check at startup and then once a day; the settings window shows the result.</summary>
+    private static void CheckUpdates()
+    {
+        if ((DateTime.UtcNow - _lastUpdateCheck).TotalHours < 24) return;
+        _lastUpdateCheck = DateTime.UtcNow;
+
+        _ = Task.Run(async () =>
+        {
+            if (await UpdateService.CheckAsync() != true) return;
+
+            _ = Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SettingsWindowInstance?.ShowUpdateAvailable();
+                // A silent logon start must not pop a window; the taskbar menu still offers the check.
+                if (!_silent) UpdateWindow.ShowUpdate();
+            }));
+        });
     }
 
     private static void FollowSystemTheme()

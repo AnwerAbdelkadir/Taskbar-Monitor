@@ -28,6 +28,9 @@ public partial class SettingsWindow : Window
     private Button? _sensorInstallButton;
     private bool _hintRevealed;
 
+    private readonly string _footer =
+        "Changes apply instantly and are saved automatically.  ·  v" + AppVersion.Display;
+
     private const string PawnIoUrl =
         "https://github.com/namazso/PawnIO.Setup/releases/latest/download/PawnIO_setup.exe";
 
@@ -45,13 +48,14 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
 
-        FooterText.Text = "Changes apply instantly and are saved automatically.  ·  v" + AppVersion.Display;
+        FooterText.Text = _footer;
 
         PreviewMeterHost.Child = _preview;
         BuildChoices();
         LoadFromSettings();
         HookEvents();
         ApplyChrome();
+        ApplyUpdateState();
 
         UpdatePreview(true);
         UpdateStatus();
@@ -794,6 +798,33 @@ public partial class SettingsWindow : Window
             : "Startup — disabled.";
     }
 
+    /// <summary>The background check found a newer release.</summary>
+    public void ShowUpdateAvailable() => ApplyUpdateState();
+
+    private void ApplyUpdateState()
+    {
+        var available = UpdateService.UpdateAvailable;
+        InstallUpdateButton.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+        UpdateStatusText.Text = available
+            ? $"v{AppVersion.Display} installed — v{UpdateService.Latest} is available."
+            : "Checks GitHub for a newer release once a day.";
+        FooterText.Text = _footer + (available ? $"  ·  v{UpdateService.Latest} available" : "");
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        CheckUpdateButton.IsEnabled = false;
+        UpdateStatusText.Text = "Checking GitHub…";
+
+        var available = await UpdateService.CheckAsync();
+        ApplyUpdateState();
+        if (available is null) UpdateStatusText.Text = "Could not reach GitHub. Check the connection.";
+        else if (!available.Value) UpdateStatusText.Text = $"You have the latest version (v{AppVersion.Display}).";
+        CheckUpdateButton.IsEnabled = true;
+    }
+
+    private void InstallUpdate_Click(object sender, RoutedEventArgs e) => UpdateWindow.ShowUpdate();
+
     private void RestartAdmin_Click(object sender, RoutedEventArgs e)
     {
         var answer = MessageBox.Show(this,
@@ -863,6 +894,18 @@ public partial class SettingsWindow : Window
         {
             button.Content = label;
             button.IsEnabled = true;
+        }
+    }
+
+    private void OpenReleases_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(UpdateService.ReleasesUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Log.Error("open releases", ex);
         }
     }
 

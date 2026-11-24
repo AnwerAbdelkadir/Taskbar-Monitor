@@ -246,6 +246,14 @@ denied:
   definition instead of `schtasks /Create`: the command line version sets "do not
   start on batteries" and a 72-hour run limit, which would block laptops and kill
   the overlay after three days.
+- Auto-update: `UpdateService` reads the latest GitHub release (`releases/latest`,
+  asset **must** stay named `TaskbarMonitor.exe`) and `UpdateWindow` is the single
+  progress surface (taskbar menu, Startup page, automatic startup check). A running
+  exe can be renamed but not overwritten, so `InstallAsync` downloads
+  `TaskbarMonitor.exe.new`, verifies the API's sha256 digest, moves the old exe to
+  `.old`, moves the new one into place and starts it with `--replace`; the next
+  start deletes `.old`. The daily check rides on the existing 2 s `_themeTimer` in
+  `App` and only pops the window when the app was not started with `--silent`.
 
 ## Sensor setup on a fresh machine
 

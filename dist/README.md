@@ -68,7 +68,12 @@ Settings and the log live in `%AppData%\TaskbarMonitor`.
   keeps the readings on top while a game, video or browser covers the taskbar; it
   is off by default and only applies while Windows has hidden the taskbar.
 - **Startup** – start with Windows, optionally elevated through a scheduled task
-  (Windows then does not ask for permission on every logon).
+  (Windows then does not ask for permission on every logon). The **Updates** row
+  shows the running version, **Check now**, and **Download and install** when a
+  newer release exists; the app checks GitHub once a day on its own, and on a
+  normal start the update window appears with the download progress, a checksum
+  check and a cancel button. **Check for updates** is also in the taskbar
+  right-click menu.
 - **Warnings** – the levels where percentages turn amber and red (80 % and 92 % by
   default) and where temperatures do (85 °C and 95 °C by default).
 - **Alerts** – when enabled (default), a value that stays above its red level for
