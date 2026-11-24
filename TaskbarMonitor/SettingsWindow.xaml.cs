@@ -669,9 +669,7 @@ public partial class SettingsWindow : Window
             ? "CPU temperature — " + App.Metrics.CpuTemps.Status
             : "CPU temperature — reading sensors…";
 
-        GpuStatusText.Text = App.Metrics.Gpu.Available
-            ? "GPU sensors — NVML ready."
-            : "GPU sensors — no NVIDIA GPU detected; GPU values show as --.";
+        GpuStatusText.Text = App.Metrics.GpuStatus;
 
         StartupStatusText.Text = App.Settings.StartWithWindows
             ? App.Settings.StartElevated

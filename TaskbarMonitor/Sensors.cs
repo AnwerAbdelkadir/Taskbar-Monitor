@@ -17,6 +17,7 @@ public sealed class MetricsSnapshot
     public double GpuPercent = double.NaN;
     public double GpuTemp = double.NaN;
     public double GpuFan = double.NaN;        // percent of the first fan
+    public double GpuFanRpm = double.NaN;     // LibreHardwareMonitor fallback: rpm, not percent
     public long VramUsed;
     public long VramTotal;
 
@@ -407,6 +408,136 @@ public sealed class NvidiaGpu : IDisposable
         try { _shutdown?.Invoke(); } catch { }
         if (_library != IntPtr.Zero) NativeLibrary.Free(_library);
         _library = IntPtr.Zero;
+    }
+}
+
+/// <summary>
+/// The GPU source used when NVML is unavailable (Intel / AMD cards): the same
+/// LibreHardwareMonitor library that already backs the CPU sensors reads the
+/// GPU through the vendor APIs it bundles. Usage and temperature match the NVML
+/// numbers; the fan is reported in rpm, and memory only when the driver exposes
+/// it. Only one GPU device is sampled (the first one found).
+/// </summary>
+public sealed class LhmGpu : IDisposable
+{
+    private readonly object _gate = new();
+    private Computer? _computer;
+    private IHardware? _gpu;
+
+    public bool Available { get; private set; }
+
+    public void Initialize()
+    {
+        try
+        {
+            var computer = new Computer { IsGpuEnabled = true };
+            computer.Open();
+
+            var gpu = computer.Hardware.FirstOrDefault(h =>
+                h.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel);
+            if (gpu is null)
+            {
+                computer.Close();
+                return;
+            }
+
+            gpu.Update();
+            var usable = gpu.Sensors.Any(s => s.Value.HasValue &&
+                s.SensorType is SensorType.Load or SensorType.Temperature or SensorType.Fan);
+            if (!usable)
+            {
+                computer.Close();
+                return;
+            }
+
+            lock (_gate)
+            {
+                _computer = computer;
+                _gpu = gpu;
+                Available = true;
+            }
+
+            Log.Info("gpu sensors: " + gpu.Name + " (LibreHardwareMonitor)");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("gpu fallback init", ex);
+        }
+    }
+
+    public void Sample(MetricsSnapshot snapshot)
+    {
+        lock (_gate)
+        {
+            if (_computer is null || _gpu is null) return;
+            try
+            {
+                _gpu.Update();
+
+                var load = double.NaN;
+                var temp = double.NaN;
+                var fanRpm = double.NaN;
+                var memoryUsedMb = double.NaN;
+                var memoryTotalMb = double.NaN;
+
+                foreach (var sensor in _gpu.Sensors)
+                {
+                    if (!sensor.Value.HasValue) continue;
+                    var value = sensor.Value.Value;
+                    if (double.IsNaN(value) || double.IsInfinity(value)) continue;
+
+                    switch (sensor.SensorType)
+                    {
+                        case SensorType.Load when sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
+                            // A card can expose several load rails; the core one is what the widget shows.
+                            load = double.IsNaN(load) ? value : Math.Max(load, value);
+                            break;
+
+                        case SensorType.Temperature when value is > 0 and < 125:
+                            temp = double.IsNaN(temp) ? value : Math.Max(temp, value);
+                            break;
+
+                        case SensorType.Fan:
+                            if (double.IsNaN(fanRpm)) fanRpm = value;
+                            break;
+
+                        // SmallData values are in MB.
+                        case SensorType.SmallData when sensor.Name.Contains("Memory Used", StringComparison.OrdinalIgnoreCase):
+                            memoryUsedMb = value;
+                            break;
+
+                        case SensorType.SmallData when sensor.Name.Contains("Memory Total", StringComparison.OrdinalIgnoreCase):
+                            memoryTotalMb = value;
+                            break;
+                    }
+                }
+
+                if (!double.IsNaN(load)) snapshot.GpuPercent = Math.Clamp(load, 0, 100);
+                if (!double.IsNaN(temp)) snapshot.GpuTemp = temp;
+                if (!double.IsNaN(fanRpm)) snapshot.GpuFanRpm = fanRpm;
+
+                if (!double.IsNaN(memoryUsedMb) && !double.IsNaN(memoryTotalMb) && memoryTotalMb > 0)
+                {
+                    snapshot.VramUsed = (long)(memoryUsedMb * 1024 * 1024);
+                    snapshot.VramTotal = (long)(memoryTotalMb * 1024 * 1024);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("gpu fallback sample", ex);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            _computer?.Close();
+            _computer = null;
+            _gpu = null;
+            Available = false;
+        }
     }
 }
 

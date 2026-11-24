@@ -21,7 +21,7 @@ that draws two compact rows over the taskbar and takes up no window space.
 - **Six widgets** in a fixed two-row layout:
   - **Network** (left, both rows) — upload over download for one adapter or all active ones.
   - **CPU** — usage, temperature and clock speed.
-  - **GPU** — usage, VRAM, temperature and fan (NVIDIA NVML).
+  - **GPU** — usage, VRAM, temperature and fan (NVIDIA NVML; Intel and AMD through LibreHardwareMonitor).
   - **RAM** — usage, used / total.
   - **Disk** — activity and used / total space of a chosen drive.
   - **Battery** — charge level and power source (laptops).
@@ -47,13 +47,16 @@ that draws two compact rows over the taskbar and takes up no window space.
 | CPU usage | `GetSystemTimes` deltas |
 | CPU temperature, frequency | LibreHardwareMonitor 0.9.6 via the PawnIO driver (needs administrator) |
 | RAM used / total | `GlobalMemoryStatusEx` |
-| GPU usage, VRAM, temperature, fan | NVIDIA NVML |
+| GPU usage, VRAM, temperature, fan | NVIDIA NVML; LibreHardwareMonitor on Intel / AMD |
 | Network upload / download | byte counters of the chosen adapter, or of every active adapter |
 | Disk activity / space | PDH `LogicalDisk` counter for the chosen drive + `DriveInfo` |
 | Battery | `GetSystemPowerStatus` |
 
-GPU values need an NVIDIA card. Without one the GPU widget shows `--`; everything
-else keeps working. CPU temperature and frequency additionally need the app to run
+GPU readings come from NVIDIA NVML on NVIDIA cards. On Intel and AMD the same
+LibreHardwareMonitor library that reads the CPU supplies usage and temperature
+(VRAM and fan when the driver exposes them), and the fan is shown in rpm. Without
+a supported GPU the GPU widget shows `--`; everything else keeps working. CPU
+temperature and frequency additionally need the app to run
 as administrator **and the [PawnIO](https://github.com/namazso/PawnIO.Setup/releases)
 driver installed** — LibreHardwareMonitor reads the chipset through PawnIO
 instead of the WinRing0 driver that Microsoft now blocks. Without either, those
@@ -120,8 +123,9 @@ TaskbarMonitor/bin/Debug/net8.0-windows/TaskbarMonitor.exe
   *and* PawnIO must be installed once: run `PawnIO_setup.exe -install` elevated
   (from the [PawnIO releases](https://github.com/namazso/PawnIO.Setup/releases)).
   `/S` does not work — it exits with code 87 and installs nothing.
-- **GPU shows `--`** — no NVIDIA GPU or no `nvml.dll` from the driver. Everything
-  else keeps working.
+- **GPU shows `--`** — the card is not visible to NVML or LibreHardwareMonitor
+  (very old drivers, a virtual machine, or a GPU running in a passthrough setup).
+  Everything else keeps working.
 - **Readings hidden behind the taskbar** — the strip re-asserts topmost every
   25 ms to survive shell animations; the shell briefly covers it on the primary
   monitor during minimize/restore animations, and it recovers by itself.

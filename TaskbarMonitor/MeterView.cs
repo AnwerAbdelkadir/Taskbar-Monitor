@@ -164,10 +164,13 @@ internal sealed class MetricView : StackPanel, IMetricView
             extras.Add(new Extra(megahertz >= 1000 ? $"{megahertz / 1000.0:0.#}GHz" : $"{megahertz:0}MHz", false));
         }
 
-        void AddFan(double percent)
+        void AddFan(double percent, double rpm)
         {
-            if (!_block.ShowFan || double.IsNaN(percent) || percent is < 0 or > 100) return;
-            extras.Add(new Extra($"Fan {percent:0}%", false));
+            if (!_block.ShowFan) return;
+            if (!double.IsNaN(percent) && percent is >= 0 and <= 100)
+                extras.Add(new Extra($"Fan {percent:0}%", false));
+            else if (!double.IsNaN(rpm) && rpm >= 0)
+                extras.Add(new Extra($"Fan {rpm:0}RPM", false));
         }
 
         switch (_block.Kind)
@@ -183,7 +186,7 @@ internal sealed class MetricView : StackPanel, IMetricView
                 percent = s.GpuPercent;
                 value = double.IsNaN(s.GpuPercent) ? "--" : $"{s.GpuPercent:0}%";
                 AddTemperature(s.GpuTemp);
-                AddFan(s.GpuFan);
+                AddFan(s.GpuFan, s.GpuFanRpm);
                 if (_block.ShowVram && s.VramTotal > 0)
                     extras.Add(new Extra($"VRAM {Gib(s.VramUsed):0.0}/{Gib(s.VramTotal):0.0}G", false));
                 break;

@@ -6,12 +6,21 @@ public sealed class MetricsService : IDisposable
     private readonly NetworkSampler _network = new();
     private readonly Dictionary<string, DiskSampler> _disks = new(StringComparer.OrdinalIgnoreCase);
     private readonly NvidiaGpu _gpu = new();
+    private readonly LhmGpu _gpuFallback = new();
+    private bool _gpuFallbackActive;
     private Timer? _timer;
     private int _busy;
     private readonly List<string> _diskDrives = new();
 
     public CpuTemperatures CpuTemps { get; } = new();
-    public NvidiaGpu Gpu => _gpu;
+    public bool GpuAvailable => _gpuFallbackActive ? _gpuFallback.Available : _gpu.Available;
+    public string GpuStatus => _gpuFallbackActive
+        ? _gpuFallback.Available
+            ? "GPU sensors — LibreHardwareMonitor ready."
+            : "GPU sensors — no supported GPU detected; GPU values show as --."
+        : _gpu.Available
+            ? "GPU sensors — NVML ready."
+            : "GPU sensors — no NVIDIA GPU detected; GPU values show as --.";
     public MetricsSnapshot Latest { get; private set; } = new();
     public bool Paused { get; set; }
     public event Action<MetricsSnapshot>? Updated;
@@ -38,7 +47,18 @@ public sealed class MetricsService : IDisposable
 
     public void Start(int intervalMs)
     {
-        _gpu.Initialize();
+        // NVML when it works (NVIDIA); otherwise LibreHardwareMonitor, which also
+        // covers Intel and AMD. TASKBARMONITOR_GPU_SOURCE=lhm forces the fallback so
+        // it can be exercised on an NVIDIA machine.
+        var forceFallback = string.Equals(
+            Environment.GetEnvironmentVariable("TASKBARMONITOR_GPU_SOURCE"),
+            "lhm",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!forceFallback) _gpu.Initialize();
+        _gpuFallbackActive = forceFallback || !_gpu.Available;
+        if (_gpuFallbackActive) _gpuFallback.Initialize();
+
         CpuTemps.InitializeAsync();
         _timer = new Timer(Tick, null, 0, Math.Clamp(intervalMs, 250, 10000));
     }
@@ -64,7 +84,8 @@ public sealed class MetricsService : IDisposable
             (snapshot.RamUsed, snapshot.RamTotal) = MemorySampler.Sample();
             (snapshot.NetUp, snapshot.NetDown) = _network.Sample();
 
-            _gpu.Sample(snapshot);
+            if (_gpuFallbackActive) _gpuFallback.Sample(snapshot);
+            else _gpu.Sample(snapshot);
 
             foreach (var drive in _diskDrives)
             {
@@ -102,6 +123,7 @@ public sealed class MetricsService : IDisposable
         _timer?.Dispose();
         _timer = null;
         _gpu.Dispose();
+        _gpuFallback.Dispose();
         foreach (var sampler in _disks.Values) sampler.Dispose();
         _disks.Clear();
     }

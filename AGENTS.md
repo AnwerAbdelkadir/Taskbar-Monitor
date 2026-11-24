@@ -208,7 +208,11 @@ denied:
   no `.sys` is written next to the exe). Both are LHM sensors on the same `Computer`,
   but `SampleTemperature`/`SampleClock` each run their own `_cpu.Update()`, so keep
   further LHM reads off the per-tick path. GPU usage, VRAM, temperature and fan come
-  from NVIDIA NVML. Unavailable values are `NaN` and are omitted rather than zeroed.
+  from NVIDIA NVML; when NVML is missing (Intel / AMD) `LhmGpu` reads the first GPU
+  through LibreHardwareMonitor on its own `Computer`, and the fan arrives as
+  `GpuFanRpm` (shown `Fan 1200RPM`). Only exercised through
+  `TASKBARMONITOR_GPU_SOURCE=lhm` on the NVIDIA box — untested on real Intel/AMD
+  hardware. Unavailable values are `NaN` and are omitted rather than zeroed.
   Optimus GPUs error while asleep, so 0 % GPU is a deliberate fallback; `Fan 0%` is a
   real reading because desktop cards stop their fans at idle. There is no power (W)
   reading: `ShowPower` and the CPU/NVML power samples were removed.
